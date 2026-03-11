@@ -1,0 +1,18 @@
+import type { NextConfig } from "next";
+
+// Backend URL for server-side proxy (Docker service name or external URL)
+const BACKEND_URL = process.env.BACKEND_URL || "http://backend:8000";
+
+const nextConfig: NextConfig = {
+  output: "standalone",
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${BACKEND_URL}/api/:path*`,
+      },
+    ];
+  },
+};
+
+export default nextConfig;
