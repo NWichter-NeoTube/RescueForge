@@ -1,0 +1,59 @@
+# Production overrides for Coolify deployment
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+services:
+  backend:
+    volumes:
+      - upload_data:/app/uploads
+      - output_data:/app/outputs
+    # No source code mounts in production
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  worker:
+    volumes:
+      - upload_data:/app/uploads
+      - output_data:/app/outputs
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 3G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes: []
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+  redis:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
