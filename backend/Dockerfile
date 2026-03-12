@@ -10,7 +10,7 @@ RUN git clone --depth 1 --recurse-submodules https://github.com/LibreDWG/libredw
     && git submodule update --init --recursive \
     && autoreconf -fi \
     && ./configure --prefix=/usr/local --disable-bindings --disable-write \
-    && make -j$(nproc) \
+    && make -j2 \
     && make install
 
 # Stage 2: Final image

@@ -3,6 +3,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: rescueforge-backend
     ports:
       - "8000"  # Internal only; frontend proxies via Next.js rewrites
     volumes:
@@ -26,9 +27,7 @@ services:
       start_period: 10s
 
   worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: rescueforge-backend
     command: uv run celery -A app.worker worker --loglevel=info --concurrency=2
     volumes:
       - upload_data:/app/uploads
@@ -39,6 +38,8 @@ services:
       - OPENROUTER_VISION_MODEL=${OPENROUTER_VISION_MODEL:-google/gemini-2.5-flash}
       - REDIS_URL=redis://redis:6379/0
     depends_on:
+      backend:
+        condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
