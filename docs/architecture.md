@@ -73,7 +73,7 @@ Shared Volumes:
  ┌─────────────────────┐
  │ 4. Room Classifier  │  OpenRouter Vision API
  │    → Büro           │  Plan als PNG rendern
- │    → Korridor       │  GPT-4o/Gemini klassifiziert
+ │    → Korridor       │  Gemini 2.5 Flash klassifiziert
  │    → Treppenhaus    │  Fallback: Geometrie-Heuristik
  │    → WC, Lager ...  │
  └──────────┬──────────┘
@@ -118,6 +118,7 @@ Shared Volumes:
 | GET | `/api/jobs/{id}/pdf` | FKS-Orientierungsplan (PDF) |
 | GET | `/api/jobs/{id}/cover-sheet` | Deckblatt (SVG) |
 | GET | `/api/jobs/{id}/situation-plan` | Situationsplan (SVG) |
+| GET | `/api/jobs/{id}/compliance` | DIN-Konformitätsbericht (DOCX) |
 | GET | `/api/jobs/{id}/original-svg` | Original DXF Vorschau |
 | GET | `/api/jobs/{id}/data` | Grundrissdaten (JSON) |
 | GET | `/api/jobs/{id}/metrics` | Pipeline-Leistungsmetriken |
@@ -183,7 +184,7 @@ DXF-Dateien verwenden keine standardisierten Layer-Namen. Die Pipeline verwendet
 
 ### Ansatz
 1. Floor Plan mit nummerierten Räumen als PNG rendern (Matplotlib)
-2. Bild an Vision API senden (OpenRouter → GPT-4o/Gemini)
+2. Bild an Vision API senden (OpenRouter → Gemini 2.5 Flash)
 3. JSON-Response parsen: `[{"id": 1, "type": "office", "label": "Büro"}]`
 
 ### Fallback (Heuristik)
@@ -208,8 +209,14 @@ Wenn AI nicht verfügbar, geometrische Regeln:
 | Gefüllte Wände | Doppellinien-Polygone, RAL 9004 |
 | Brandwände | RAL 3000, doppelte Stärke |
 | 10m-Referenzraster | Graue gestrichelte Linien |
-| 18 FKS-Symbole | DIN 14034-6 konform |
+| 20 FKS-Symbole | DIN 14034-6 konform |
 | Symbolkollisionsfrei | AABB-basierte Platzierung |
+| Fluchtweg-Distanzvalidierung | Max. 35m, rote Markierung bei Überschreitung |
+| Brandabschnitte | Polygonize aus Brandwänden, BA-Nummerierung |
+| Notausgang-Symbole | An Türen nahe Treppenhäusern (DIN 14034-6) |
+| Feuerlöscher-Symbole | In Korridoren/Lobbys (§7 DIN 14095) |
+| Geschosserkennung | Aus DXF-Layouts und Dateinamen |
+| 20 FKS-Symbole | DIN 14034-6 konform inkl. Notausgang + Feuerlöscher |
 
 ## Technologie-Entscheide
 

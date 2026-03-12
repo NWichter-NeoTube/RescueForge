@@ -13,9 +13,11 @@ from app.utils.symbols import (
     bma_bs,
     electricity_shutoff,
     elevator_symbol,
+    emergency_exit_symbol,
     erstinfo_symbol,
     fire_access_arrow,
     fire_door_symbol,
+    fire_extinguisher_symbol,
     floor_section_indicator,
     gas_shutoff,
     key_depot,
@@ -545,8 +547,8 @@ def generate_svg(
     na = north_arrow(dwg, paper_w - MARGIN - LEGEND_WIDTH - 10, MARGIN + 15, size=8)
     dwg.add(na)
 
-    # Floor section indicator (below legend)
-    floors = ["UG", "EG", "1.OG", "2.OG"]
+    # Floor section indicator (below legend) — use detected floors or fallback
+    floors = floor_plan.floors if floor_plan.floors else ["UG", "EG", "1.OG", "2.OG"]
     current = floor_label or "EG"
     if current not in floors:
         floors.append(current)
@@ -562,29 +564,47 @@ def generate_svg(
     # Scale bar (unit-aware)
     _draw_scale_bar(dwg, offset_x, paper_h - MARGIN - TITLE_BLOCK_HEIGHT - 8, scale, unit_to_mm)
 
+    # === FIRE COMPARTMENT BOUNDARIES (DIN 14095) ===
+    _draw_fire_compartments(dwg, floor_plan, rooms, tx, ty)
+
     # === FKS SAFETY SYMBOLS ===
     _draw_safety_symbols(dwg, rooms, tx, ty, centroid_cache, floor_plan, symbol_placer)
 
     # === ESCAPE ROUTE LINES ===
-    _draw_escape_routes(dwg, rooms, tx, ty, centroid_cache)
+    _draw_escape_routes(dwg, rooms, tx, ty, centroid_cache, unit_to_mm=unit_to_mm)
 
-    # Fire access arrow (bottom-left of drawing area)
-    fa = fire_access_arrow(dwg, MARGIN + 8, paper_h - MARGIN - TITLE_BLOCK_HEIGHT - 12, angle=0, size=6)
-    dwg.add(fa)
+    # === INFRASTRUCTURE SYMBOLS — placed near main entrance (DIN 14095 §7) ===
+    # Identify main entrance: door nearest to building perimeter (Side A = south/bottom)
+    entrance_x, entrance_y = MARGIN + 8, paper_h - MARGIN - TITLE_BLOCK_HEIGHT - 12  # fallback
+    if floor_plan.doors:
+        # Find door closest to the building perimeter (minimum Y = bottom/Side A)
+        best_door = min(
+            floor_plan.doors,
+            key=lambda d: d.position.y,  # Lowest Y ≈ nearest to Side A entrance
+        )
+        entrance_x = tx(best_door.position.x)
+        entrance_y = ty(best_door.position.y) + 6  # Below the door
 
-    # Key depot near entrance (bottom-left)
-    kd = key_depot(dwg, MARGIN + 20, paper_h - MARGIN - TITLE_BLOCK_HEIGHT - 12, size=4)
-    dwg.add(kd)
+    infra_group = dwg.g(id="infrastructure-symbols")
+    fa = fire_access_arrow(dwg, entrance_x - 6, entrance_y, angle=0, size=6)
+    infra_group.add(fa)
+    kd = key_depot(dwg, entrance_x + 4, entrance_y, size=4)
+    infra_group.add(kd)
+    bmz = bma_bs(dwg, entrance_x + 14, entrance_y, size=5)
+    infra_group.add(bmz)
 
-    # FKS: Brandmeldezentrale (BMA-BS / fire alarm control panel)
-    bmz = bma_bs(dwg, MARGIN + 32, paper_h - MARGIN - TITLE_BLOCK_HEIGHT - 12, size=5)
-    dwg.add(bmz)
+    # Utility shutoffs: near first TECHNICAL room or fallback to entrance area
+    shutoff_x, shutoff_y = entrance_x + 24, entrance_y
+    for room in rooms:
+        if room.room_type == RoomType.TECHNICAL and room.id in centroid_cache:
+            scx, scy = centroid_cache[room.id]
+            shutoff_x, shutoff_y = tx(scx), ty(scy) + 4
+            break
 
-    # === UTILITY SHUTOFF SYMBOLS (DIN 14095 §7) ===
-    shutoff_y = paper_h - MARGIN - TITLE_BLOCK_HEIGHT - 12
-    dwg.add(gas_shutoff(dwg, MARGIN + 44, shutoff_y, size=_ensure_min_size(4)))
-    dwg.add(water_shutoff(dwg, MARGIN + 54, shutoff_y, size=_ensure_min_size(4)))
-    dwg.add(electricity_shutoff(dwg, MARGIN + 64, shutoff_y, size=_ensure_min_size(4)))
+    infra_group.add(gas_shutoff(dwg, shutoff_x, shutoff_y, size=_ensure_min_size(4)))
+    infra_group.add(water_shutoff(dwg, shutoff_x + 10, shutoff_y, size=_ensure_min_size(4)))
+    infra_group.add(electricity_shutoff(dwg, shutoff_x + 20, shutoff_y, size=_ensure_min_size(4)))
+    dwg.add(infra_group)
 
     dwg.save()
     logger.info("SVG generated: %s", output_path)
@@ -1163,6 +1183,38 @@ def _draw_safety_symbols(
             ex, ey = placer.place(tx(centroid[0]), ty(centroid[1]), elev_size)
             symbols_group.add(elevator_symbol(dwg, ex, ey, size=elev_size))
 
+    # Emergency exit symbols at doors near stairwells/exits (DIN 14034-6)
+    if floor_plan and floor_plan.doors:
+        from shapely.geometry import Point as ShapelyPoint, Polygon as ShapelyPoly2
+        exit_types = {RoomType.STAIRWELL, RoomType.LOBBY}
+        exit_room_polys = []
+        for room in rooms:
+            if room.room_type in exit_types and len(room.points) >= 3:
+                exit_room_polys.append(
+                    ShapelyPoly2([(p.x, p.y) for p in room.points]).buffer(2)
+                )
+        if exit_room_polys:
+            exit_sym_count = 0
+            for door in floor_plan.doors:
+                dp = ShapelyPoint(door.position.x, door.position.y)
+                for ep in exit_room_polys:
+                    if ep.contains(dp) and exit_sym_count < 6:
+                        esx, esy = placer.place(tx(door.position.x), ty(door.position.y), sym_size)
+                        symbols_group.add(emergency_exit_symbol(dwg, esx, esy, size=sym_size))
+                        exit_sym_count += 1
+                        break
+
+    # Fire extinguisher: one per corridor/lobby (DIN 14095 §7 — max 20m spacing)
+    ext_count = 0
+    for room in rooms:
+        if room.room_type in (RoomType.CORRIDOR, RoomType.LOBBY) and room.id in centroid_cache:
+            if ext_count >= 6:
+                break
+            fex, fey = _room_edge_point(room, centroid_cache[room.id], "right")
+            fex, fey = placer.place(tx(fex), ty(fey), sym_size)
+            symbols_group.add(fire_extinguisher_symbol(dwg, fex, fey, size=sym_size))
+            ext_count += 1
+
     # Wall hydrant: near first corridor edge (if sprinkler detected)
     if floor_plan and floor_plan.has_sprinkler:
         for room in rooms:
@@ -1191,6 +1243,7 @@ def _draw_escape_routes(
     tx,
     ty,
     centroid_cache: dict[int, tuple[float, float]] | None = None,
+    unit_to_mm: float = 1.0,
 ) -> None:
     """Draw escape route lines using room adjacency graph for realistic paths.
 
@@ -1329,16 +1382,25 @@ def _draw_escape_routes(
                     visited.add(neighbor)
                     queue.append((neighbor, current_path + [neighbor]))
 
+        # DIN 14095: max 35m escape route distance
+        _MAX_ESCAPE_DISTANCE_M = 35.0
+
         if path and len(path) >= 2:
             # Try enhanced corridor routing (polyline through centerlines)
             waypoints = []
+            route_distance_m = 0.0
             if corridor_graph is not None:
                 try:
-                    waypoints = route_escape_path(
+                    waypoints, dist_plan = route_escape_path(
                         corridor_graph, src_idx, [path[-1]],
                     )
+                    route_distance_m = dist_plan * unit_to_mm / 1000.0
                 except Exception:
                     waypoints = []
+
+            # Determine route color: green for compliant, red for exceeding 35m
+            route_exceeds = route_distance_m > _MAX_ESCAPE_DISTANCE_M
+            route_color = "#CC0000" if route_exceeds else "#006400"
 
             if len(waypoints) >= 2:
                 # Draw polyline through corridor centerline waypoints
@@ -1346,7 +1408,7 @@ def _draw_escape_routes(
                 escape_group.add(dwg.polyline(
                     points=svg_points,
                     fill="none",
-                    stroke="#006400", stroke_width=0.8, stroke_dasharray="2,1",
+                    stroke=route_color, stroke_width=0.8, stroke_dasharray="2,1",
                 ))
                 # Arrow at the end
                 if len(svg_points) >= 2:
@@ -1355,6 +1417,19 @@ def _draw_escape_routes(
                         svg_points[-1][0], svg_points[-1][1],
                         svg_points[-2][0], svg_points[-2][1],
                     )
+                # Distance annotation (DIN 14095 §6.4)
+                if route_distance_m > 0 and len(svg_points) >= 2:
+                    mid_idx = len(svg_points) // 2
+                    label_x, label_y = svg_points[mid_idx]
+                    dist_label = f"{route_distance_m:.0f}m"
+                    if route_exceeds:
+                        dist_label += " !"
+                    escape_group.add(dwg.text(
+                        dist_label,
+                        insert=(label_x + 1, label_y - 1),
+                        font_size="2", font_family="Arial, sans-serif",
+                        fill=route_color, font_weight="bold",
+                    ))
             else:
                 # Fallback: centroid-to-centroid lines (original behavior)
                 for k in range(len(path) - 1):
@@ -1363,7 +1438,7 @@ def _draw_escape_routes(
                     x2, y2 = room_data[rj]["cx"], room_data[rj]["cy"]
                     escape_group.add(dwg.line(
                         start=(tx(x1), ty(y1)), end=(tx(x2), ty(y2)),
-                        stroke="#006400", stroke_width=0.8, stroke_dasharray="2,1",
+                        stroke=route_color, stroke_width=0.8, stroke_dasharray="2,1",
                     ))
                 _draw_escape_arrow_at(
                     escape_group,
@@ -1388,6 +1463,74 @@ def _draw_escape_routes(
                 )
 
     dwg.add(escape_group)
+
+
+def _draw_fire_compartments(
+    dwg: svgwrite.Drawing,
+    floor_plan: FloorPlanData,
+    rooms: list[RoomPolygon],
+    tx,
+    ty,
+) -> None:
+    """Draw fire compartment boundaries derived from fire walls (DIN 14095).
+
+    Combines fire walls with exterior walls, runs polygonize() to extract
+    closed compartment regions, and renders them as red dashed boundaries
+    with compartment labels (BA 1, BA 2, ...).
+    """
+    if not floor_plan.fire_walls:
+        return
+
+    from shapely.geometry import MultiLineString, Polygon as ShapelyPoly
+    from shapely.ops import polygonize, unary_union
+
+    # Collect all fire wall + exterior wall segments as LineStrings
+    lines = []
+    for fw in floor_plan.fire_walls:
+        lines.append(((fw.start.x, fw.start.y), (fw.end.x, fw.end.y)))
+    for w in floor_plan.walls:
+        lines.append(((w.start.x, w.start.y), (w.end.x, w.end.y)))
+
+    if len(lines) < 4:
+        return
+
+    try:
+        mls = MultiLineString(lines)
+        compartments = list(polygonize(mls))
+    except Exception:
+        logger.debug("Fire compartment polygonize failed")
+        return
+
+    if len(compartments) < 2:
+        return  # Only useful with 2+ compartments
+
+    comp_group = dwg.g(id="fire-compartments")
+    for idx, comp in enumerate(compartments, 1):
+        if comp.is_empty or comp.area < 1.0:
+            continue
+        # Draw compartment boundary as dashed red outline
+        exterior_coords = list(comp.exterior.coords)
+        svg_points = [(tx(x), ty(y)) for x, y in exterior_coords]
+        comp_group.add(dwg.polygon(
+            points=svg_points,
+            fill="none",
+            stroke="#AF2B1E",  # RAL 3000
+            stroke_width=0.6,
+            stroke_dasharray="3,2",
+            fill_opacity=0,
+        ))
+        # Label at centroid
+        c = comp.centroid
+        comp_group.add(dwg.text(
+            f"BA {idx}",
+            insert=(tx(c.x), ty(c.y)),
+            text_anchor="middle", dominant_baseline="middle",
+            font_size="2.5", font_family="Arial, sans-serif",
+            fill="#AF2B1E", font_weight="bold",
+        ))
+
+    dwg.add(comp_group)
+    logger.info("Drew %d fire compartment boundaries", len(compartments))
 
 
 def generate_cover_sheet(
@@ -1726,8 +1869,9 @@ def generate_situation_plan(
         size=(street_w, 8),
         fill="#D3D3D3", stroke="#AAAAAA", stroke_width=0.3,
     ))
+    street_label = address if address else t("situation.street", lang)
     dwg.add(dwg.text(
-        t("situation.street", lang),
+        street_label,
         insert=(tx(minx + plan_w / 2), street_y_top + 5),
         text_anchor="middle", font_size="3",
         font_family="Arial, sans-serif", fill="#666666", font_style="italic",

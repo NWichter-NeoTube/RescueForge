@@ -71,6 +71,7 @@ class FloorPlanData(BaseModel):
 
     filename: str
     floor_label: str = ""
+    floors: list[str] = []  # Detected floor names from DXF layouts / filename
     walls: list[WallSegment] = []
     doors: list[DoorInfo] = []
     stairs: list[StairInfo] = []

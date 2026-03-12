@@ -41,10 +41,11 @@ class TestSymbolRegistry:
         "floor_section", "gas_shutoff", "water_shutoff", "electricity_shutoff",
         "stair_direction", "elevator", "wall_hydrant", "rwa",
         "assembly_point", "erstinfo", "fire_door",
+        "emergency_exit", "fire_extinguisher",
     }
 
-    def test_has_18_entries(self):
-        assert len(SYMBOL_REGISTRY) == 18
+    def test_has_20_entries(self):
+        assert len(SYMBOL_REGISTRY) == 20
 
     def test_expected_keys(self):
         assert set(SYMBOL_REGISTRY.keys()) == self.EXPECTED_KEYS

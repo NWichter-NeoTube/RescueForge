@@ -2,6 +2,7 @@
 
 import logging
 import math
+import re
 from pathlib import Path
 from statistics import median
 
@@ -463,6 +464,68 @@ def _simplify_walls(walls: list[WallSegment], tolerance: float = 1.0) -> list[Wa
     return filtered
 
 
+# German floor label patterns (used for layout detection and filename parsing)
+_FLOOR_PATTERN = re.compile(
+    r"^(UG|KG|EG|DG|"            # Simple labels: Untergeschoss, Keller, Erdgeschoss, Dach
+    r"\d+\.?\s*OG|"              # e.g. 1.OG, 2OG, 3. OG
+    r"\d+\.?\s*UG|"              # e.g. 1.UG, 2UG
+    r"GF|B\d+|L\d+)$",          # Ground Floor, Basement 1, Level 1
+    re.IGNORECASE,
+)
+
+# Standard floor ordering for consistent display
+_FLOOR_ORDER = {
+    "2.UG": 0, "1.UG": 1, "UG": 2, "KG": 2,
+    "EG": 3, "GF": 3,
+    "1.OG": 4, "2.OG": 5, "3.OG": 6, "4.OG": 7, "5.OG": 8,
+    "DG": 9,
+}
+
+
+def _detect_floors(doc, filepath: Path) -> tuple[list[str], str]:
+    """Detect floor names from DXF layouts and filename.
+
+    Returns:
+        Tuple of (floor_list, current_floor_label).
+        floor_list: Sorted list of detected floor labels.
+        current_floor_label: Best guess for the current floor (from filename or "EG").
+    """
+    floors: set[str] = set()
+    current_floor = ""
+
+    # Strategy 1: Check DXF layout tab names
+    try:
+        for layout in doc.layouts:
+            name = layout.name.strip()
+            if name.lower() in ("model", "model_space", "*model_space"):
+                continue
+            # Check if layout name matches a floor pattern
+            if _FLOOR_PATTERN.match(name):
+                floors.add(name.upper().replace(" ", ""))
+    except Exception:
+        pass  # Some DXF files have broken layout definitions
+
+    # Strategy 2: Extract floor from filename
+    stem = filepath.stem.upper().replace(" ", "").replace("_", ".")
+    # Try common filename patterns: "Building_1OG", "Plan_EG", etc.
+    for part in re.split(r"[_\-\s.]+", filepath.stem):
+        if _FLOOR_PATTERN.match(part.strip()):
+            current_floor = part.strip().upper().replace(" ", "")
+            floors.add(current_floor)
+            break
+
+    # Sort floors by building order
+    sorted_floors = sorted(
+        floors,
+        key=lambda f: _FLOOR_ORDER.get(f, 3 + int(re.search(r"\d+", f).group()) if re.search(r"\d+", f) else 3),
+    )
+
+    if not current_floor:
+        current_floor = sorted_floors[0] if sorted_floors else ""
+
+    return sorted_floors, current_floor
+
+
 class DXFParseError(Exception):
     """Raised when a DXF file cannot be parsed."""
 
@@ -685,8 +748,13 @@ def parse_dxf(filepath: str | Path) -> FloorPlanData:
         {k: v for k, v in sorted(layer_stats.items(), key=lambda x: -x[1])[:10]},
     )
 
+    # Detect floor information from layouts and filename
+    detected_floors, detected_floor_label = _detect_floors(doc, filepath)
+
     return FloorPlanData(
         filename=filepath.name,
+        floor_label=detected_floor_label,
+        floors=detected_floors,
         walls=walls,
         doors=doors,
         stairs=stairs,

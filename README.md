@@ -15,7 +15,7 @@
 3. **Wall extraction** — detects walls, doors, fire walls, fire doors, windows, stairs, and sprinkler systems
 4. **Unit auto-detection** — corrects incorrectly declared DXF units (e.g. mm vs inches) using building-size heuristics
 5. **Room detection** — generates room polygons from closed wall structures using computational geometry (Shapely + STRtree)
-6. **Room classification** — AI-powered classification (16 room types) via OpenRouter Vision API with retry logic and heuristic fallback
+6. **Room classification** — AI-powered classification (17 room types) via OpenRouter Vision API with retry logic and heuristic fallback
 7. **DIN 14095 Plan-Set** — generates floor plan, cover sheet, situation plan, and compliance report as SVG + PDF + DOCX
 8. **Corridor-centerline escape routes** — Voronoi-based medial axis extraction with NetworkX graph routing through corridor geometry
 9. **Symbol collision avoidance** — automatic placement adjustments preventing overlapping symbols in small rooms
@@ -31,7 +31,7 @@
 | Interactive room editor (reclassify & regenerate) | Done |
 | Batch upload (multi-floor processing) | Done |
 | WebSocket real-time progress | Done |
-| 340 automated tests (19 suites) | Done |
+| 341 automated tests (19 suites) | Done |
 | CI/CD pipeline (GitHub Actions) | Done |
 | 13-slide presentation (PPTX) | Done |
 | AutoCAD plugin concept (Web-first architecture) | Done |
@@ -40,6 +40,10 @@
 | Fire safety element recognition (walls, doors, sprinklers) | Done |
 | Corridor-centerline escape routes (Voronoi + NetworkX) | Done |
 | Symbol collision avoidance | Done |
+| Escape route distance validation (35m DIN limit) | Done |
+| Fire compartment boundary analysis | Done |
+| Emergency exit + fire extinguisher symbols | Done |
+| Floor detection from DXF layouts | Done |
 | Pixel-based visual regression testing (CairoSVG) | Done |
 | Real-world DXF compatibility testing | Done |
 
@@ -97,7 +101,7 @@ DWG -> [LibreDWG] -> DXF
 | Package Manager | uv |
 | Infrastructure | Docker Compose (non-root containers) |
 | CI/CD | GitHub Actions (lint, test, Docker build) |
-| Testing | pytest (340 backend tests, 19 suites), Cypress E2E |
+| Testing | pytest (341 backend tests, 19 suites), Cypress E2E |
 | Visual Regression | CairoSVG pixel-based + JSON structural fingerprints |
 
 ## Quick Start
@@ -199,6 +203,7 @@ The frontend is available on port 3000. The backend uses an internal dynamic por
 | `GET` | `/api/jobs/{job_id}/pdf` | Download FKS orientation plan (PDF) |
 | `GET` | `/api/jobs/{job_id}/cover-sheet` | Download cover sheet |
 | `GET` | `/api/jobs/{job_id}/situation-plan` | Download situation plan |
+| `GET` | `/api/jobs/{job_id}/compliance` | Download DIN compliance report (DOCX) |
 | `GET` | `/api/jobs/{job_id}/original-svg` | Raw DXF preview (before FKS processing) |
 | `GET` | `/api/jobs/{job_id}/data` | Floor plan data as JSON |
 | `GET` | `/api/jobs/{job_id}/metrics` | Pipeline performance metrics |
@@ -224,9 +229,9 @@ rescueforge/
 │   │   │   ├── compliance_doc.py   # DIN compliance report (DOCX)
 │   │   │   └── pdf_exporter.py     # PDF export (WeasyPrint)
 │   │   ├── services/      # OpenRouter client (with retry & rate-limit)
-│   │   ├── models/        # Pydantic schemas (16 room types, fire safety fields)
-│   │   └── utils/         # Geometry, 18 FKS symbols, translations, corridor routing
-│   ├── tests/             # 340 pytest tests (19 suites)
+│   │   ├── models/        # Pydantic schemas (17 room types, fire safety fields)
+│   │   └── utils/         # Geometry, 20 FKS symbols, translations, corridor routing
+│   ├── tests/             # 341 pytest tests (19 suites)
 │   ├── Dockerfile
 │   └── pyproject.toml
 ├── frontend/
@@ -288,7 +293,7 @@ Output plans follow [DIN 14095](https://www.din.de/) (Feuerwehr-Laufkarten / Ori
 ```bash
 # Backend tests (in Docker — full suite)
 docker compose exec backend uv run pytest -v
-# 340 tests, 19 suites
+# 341 tests, 19 suites
 
 # Local tests (no Docker / Celery required)
 cd backend && uv run pytest tests/test_dxf_parser.py tests/test_plan_generator.py \
@@ -317,7 +322,7 @@ docker compose exec backend uv run ruff check app/
 | `test_plan_generator.py` | 50 | SVG output, DIN title block, filled walls, fire features, escape routes, unit detection, language EN/DE, room numbering, utility symbols, reference grid |
 | `test_dxf_parser.py` | 39 | Layer classification (12 categories), multilingual patterns (EN/DE/FR/ES/VI), block detection, fire wall/door/window/sprinkler patterns, anonymized layers, 5 synthetic DXF files, door deduplication |
 | `test_api_routes.py` | 25 | Upload, batch, status, download, metrics, room update, error endpoints |
-| `test_symbols_extended.py` | 22 | All 18 FKS symbols return valid svgwrite Groups |
+| `test_symbols_extended.py` | 22 | All 20 FKS symbols return valid svgwrite Groups |
 | `test_error_handling.py` | 22 | DXF errors, PDF errors, retry logic, room type validation, security |
 | `test_openrouter.py` | 20 | Retry logic (429, 500s, timeout, connect), Retry-After header, vision/text API |
 | `test_api_routes_extended.py` | 19 | File downloads, original SVG, error endpoint, job state machine, room validation |
@@ -333,7 +338,7 @@ docker compose exec backend uv run ruff check app/
 | `test_symbol_collision.py` | 6 | AABB overlap detection, shift on overlap, label registration, small rooms |
 | `test_real_world_dxf.py` | 5 | Real-world DXF files from open sources, parser robustness |
 | `test_rate_limiting.py` | 3 | Rate limit middleware, concurrent requests |
-| **Total** | **340** | |
+| **Total** | **341** | |
 
 ### Synthetic Test DXF Files
 
@@ -435,7 +440,7 @@ See [autocad-plugin/](autocad-plugin/) for the Web-first integration concept. Th
 | Interaktiver Raumeditor (Umklassifizieren & Neu generieren) | Fertig |
 | Batch-Upload (Mehrgeschoss-Verarbeitung) | Fertig |
 | WebSocket Echtzeit-Fortschritt | Fertig |
-| 340 automatisierte Tests (19 Testsuiten) | Fertig |
+| 341 automatisierte Tests (19 Testsuiten) | Fertig |
 | CI/CD Pipeline (GitHub Actions) | Fertig |
 | 13-Folien-Präsentation (PPTX) | Fertig |
 | AutoCAD-Plugin-Konzept (Web-first Architektur) | Fertig |
@@ -500,7 +505,7 @@ Die Ausgabepläne folgen [DIN 14095](https://www.din.de/) und der [FKS Richtlini
 ```bash
 # Backend-Tests (in Docker — vollständige Suite)
 docker compose exec backend uv run pytest -v
-# 340 Tests, 19 Testsuiten
+# 341 Tests, 19 Testsuiten
 
 # Lokale Tests (ohne Docker — Kerntests)
 cd backend && uv run pytest tests/test_dxf_parser.py tests/test_plan_generator.py \

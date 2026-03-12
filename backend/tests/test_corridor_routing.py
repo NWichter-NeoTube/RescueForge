@@ -215,9 +215,10 @@ class TestRouteEscapePath:
     def test_route_finds_path_to_exit(self):
         """Should find a path from office to stairwell."""
         G = self._make_simple_graph()
-        waypoints = route_escape_path(G, source_room_idx=0, exit_room_indices=[2])
+        waypoints, distance = route_escape_path(G, source_room_idx=0, exit_room_indices=[2])
 
         assert len(waypoints) >= 2, "Path should have at least start and end"
+        assert distance > 0, "Distance should be positive"
 
         # First point near office centroid (2.5, 2.5)
         assert abs(waypoints[0][0] - 2.5) < 1.0
@@ -227,10 +228,18 @@ class TestRouteEscapePath:
         assert abs(waypoints[-1][0] - 17.5) < 1.0
         assert abs(waypoints[-1][1] - 2.5) < 1.0
 
+    def test_route_returns_distance(self):
+        """Should return distance in plan units alongside waypoints."""
+        G = self._make_simple_graph()
+        waypoints, distance = route_escape_path(G, source_room_idx=0, exit_room_indices=[2])
+
+        # Distance from office (2.5) to stairwell (17.5) ≈ 15 plan units
+        assert 10.0 < distance < 30.0, f"Expected ~15 plan units, got {distance}"
+
     def test_route_waypoints_inside_corridor(self):
         """Intermediate waypoints should be inside corridor geometry."""
         G = self._make_simple_graph()
-        waypoints = route_escape_path(G, source_room_idx=0, exit_room_indices=[2])
+        waypoints, _ = route_escape_path(G, source_room_idx=0, exit_room_indices=[2])
 
         # The corridor extends from x=5 to x=15, y=0 to y=2
         # Intermediate waypoints (not first/last) should pass through this area
@@ -252,16 +261,18 @@ class TestRouteEscapePath:
         G.add_node("room_1_centroid", x=100, y=100, room_idx=1)
         # No edges — disconnected
 
-        waypoints = route_escape_path(G, source_room_idx=0, exit_room_indices=[1])
+        waypoints, distance = route_escape_path(G, source_room_idx=0, exit_room_indices=[1])
         assert waypoints == [], "Disconnected graph should return empty path"
+        assert distance == 0.0
 
     def test_missing_source_returns_empty(self):
         """Non-existent source room should return empty."""
         G = nx.Graph()
         G.add_node("room_0_centroid", x=0, y=0, room_idx=0)
 
-        waypoints = route_escape_path(G, source_room_idx=99, exit_room_indices=[0])
+        waypoints, distance = route_escape_path(G, source_room_idx=99, exit_room_indices=[0])
         assert waypoints == []
+        assert distance == 0.0
 
 
 # ── Helpers ──────────────────────────────────────────────────

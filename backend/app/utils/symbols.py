@@ -496,6 +496,61 @@ def fire_door_symbol(
     return g
 
 
+def emergency_exit_symbol(
+    dwg: svgwrite.Drawing, x: float, y: float, size: float = 4
+) -> svgwrite.container.Group:
+    """Emergency exit sign: green rectangle with running figure (DIN 14034-6 / ISO 7010 E001)."""
+    g = dwg.g(class_="emergency-exit")
+    g.add(dwg.rect(
+        insert=(x - size * 0.6, y - size / 2),
+        size=(size * 1.2, size),
+        fill="#228B22",
+        stroke="#006400",
+        stroke_width=0.3,
+        rx=0.3,
+        ry=0.3,
+    ))
+    # Simplified running figure arrow
+    g.add(dwg.text(
+        "\u2192",
+        insert=(x, y),
+        text_anchor="middle",
+        dominant_baseline="central",
+        font_size=str(size * 0.65),
+        font_weight="bold",
+        font_family="Arial, sans-serif",
+        fill="white",
+    ))
+    return g
+
+
+def fire_extinguisher_symbol(
+    dwg: svgwrite.Drawing, x: float, y: float, size: float = 3
+) -> svgwrite.container.Group:
+    """Fire extinguisher symbol (DIN 14034-6 / ISO 7010 F001)."""
+    g = dwg.g(class_="fire-extinguisher")
+    g.add(dwg.rect(
+        insert=(x - size * 0.4, y - size / 2),
+        size=(size * 0.8, size),
+        fill="#DC143C",
+        stroke="#A00E2B",
+        stroke_width=0.3,
+        rx=0.3,
+        ry=0.3,
+    ))
+    g.add(dwg.text(
+        "F",
+        insert=(x, y),
+        text_anchor="middle",
+        dominant_baseline="central",
+        font_size=str(size * 0.55),
+        font_weight="bold",
+        font_family="Arial, sans-serif",
+        fill="white",
+    ))
+    return g
+
+
 # Map of all available symbols for use in plan generation
 SYMBOL_REGISTRY = {
     "north_arrow": north_arrow,
@@ -516,4 +571,6 @@ SYMBOL_REGISTRY = {
     "assembly_point": assembly_point_symbol,
     "erstinfo": erstinfo_symbol,
     "fire_door": fire_door_symbol,
+    "emergency_exit": emergency_exit_symbol,
+    "fire_extinguisher": fire_extinguisher_symbol,
 }

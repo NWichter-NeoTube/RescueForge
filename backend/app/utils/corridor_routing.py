@@ -287,11 +287,12 @@ def route_escape_path(
     G: nx.Graph,
     source_room_idx: int,
     exit_room_indices: list[int],
-) -> list[tuple[float, float]]:
+) -> tuple[list[tuple[float, float]], float]:
     """Find the shortest escape path from a source room to the nearest exit.
 
     Uses Dijkstra shortest path (weighted by distance) through the corridor
-    graph. Returns waypoint coordinates that follow corridor centerlines.
+    graph. Returns waypoint coordinates that follow corridor centerlines
+    along with the total path distance in plan units.
 
     Args:
         G: The corridor graph from build_corridor_graph().
@@ -299,12 +300,14 @@ def route_escape_path(
         exit_room_indices: Indices of rooms considered exits (stairwells, lobbies).
 
     Returns:
-        List of (x, y) waypoint coordinates along the path.
-        Empty list if no path exists (disconnected graph).
+        Tuple of (waypoints, distance_plan_units):
+        - waypoints: List of (x, y) coordinates along the path.
+        - distance_plan_units: Total path length in plan coordinate units.
+        Returns ([], 0.0) if no path exists (disconnected graph).
     """
     source_node = f"room_{source_room_idx}_centroid"
     if source_node not in G:
-        return []
+        return [], 0.0
 
     # Find shortest path to any exit
     best_path = None
@@ -324,7 +327,7 @@ def route_escape_path(
             continue
 
     if best_path is None:
-        return []
+        return [], 0.0
 
     # Extract (x, y) coordinates from path nodes
     waypoints = []
@@ -345,4 +348,4 @@ def route_escape_path(
             simplified.append(waypoints[-1])
         waypoints = simplified
 
-    return waypoints
+    return waypoints, best_length

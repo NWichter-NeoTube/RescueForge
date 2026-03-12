@@ -30,7 +30,7 @@ GET /health
 {
   "status": "ok",
   "service": "rescueforge",
-  "version": "0.2.0"
+  "version": "0.5.0"
 }
 ```
 
@@ -46,6 +46,7 @@ Content-Type: multipart/form-data
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `file` | File | yes | DWG or DXF file (max 50 MB) |
+| `language` | string | no | Output language (`en` or `de`). Default: `en` |
 
 **Response** `200 OK`
 ```json
