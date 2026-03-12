@@ -1,0 +1,45 @@
+export function Logo({ size = 36, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 32 32"
+      width={size}
+      height={size}
+      className={className}
+    >
+      <defs>
+        <linearGradient id="logo-bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#ef4444" />
+          <stop offset="100%" stopColor="#b91c1c" />
+        </linearGradient>
+      </defs>
+      <rect width="32" height="32" rx="8" fill="url(#logo-bg)" />
+      {/* Shield outline */}
+      <path
+        d="M16 4 L26 9 V17 C26 22.5 21.5 27 16 28 C10.5 27 6 22.5 6 17 V9 Z"
+        fill="white"
+        opacity="0.15"
+      />
+      <path
+        d="M16 6 L24 10 V17 C24 21.5 20.5 25.5 16 26.5 C11.5 25.5 8 21.5 8 17 V10 Z"
+        fill="none"
+        stroke="white"
+        strokeWidth="1.2"
+        opacity="0.9"
+      />
+      {/* Floor plan lines inside shield */}
+      <line x1="11" y1="12" x2="21" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="11" y1="12" x2="11" y2="22" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="21" y1="12" x2="21" y2="22" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="11" y1="22" x2="21" y2="22" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="16" y1="12" x2="16" y2="18" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="11" y1="17" x2="16" y2="17" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
+      {/* Small flame accent */}
+      <path
+        d="M16 8 C16 8 17.5 9.5 17.5 10.5 C17.5 11.3 16.8 12 16 12 C15.2 12 14.5 11.3 14.5 10.5 C14.5 9.5 16 8 16 8Z"
+        fill="#fbbf24"
+        opacity="0.9"
+      />
+    </svg>
+  );
+}

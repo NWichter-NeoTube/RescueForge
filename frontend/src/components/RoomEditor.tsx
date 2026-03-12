@@ -111,15 +111,15 @@ export function RoomEditor({ jobId, onPlanRegenerated }: RoomEditorProps) {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-        <p className="text-sm text-gray-500 dark:text-gray-400">{t("rooms.loading")}</p>
+      <div className="glass-card p-4">
+        <div className="h-4 w-24 bg-gray-200 dark:bg-white/[0.06] rounded animate-pulse" />
       </div>
     );
   }
 
   if (loadError) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-red-200 dark:border-red-800 p-4">
+      <div className="glass-card border-red-200 dark:border-red-500/20 p-4">
         <p className="text-sm text-red-600 dark:text-red-400">{t("rooms.saveError")}: {loadError}</p>
       </div>
     );
@@ -130,34 +130,34 @@ export function RoomEditor({ jobId, onPlanRegenerated }: RoomEditorProps) {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+    <div className="glass-card p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+        <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
           {t("rooms.title")} ({rooms.length})
         </h3>
         {hasChanges && (
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-3 py-1 bg-red-600 text-white rounded text-xs font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+            className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-500 transition-all disabled:opacity-50 shadow-sm shadow-red-600/20"
           >
             {saving ? t("rooms.saving") : t("rooms.save")}
           </button>
         )}
       </div>
-      <div className="space-y-2 max-h-[400px] overflow-y-auto">
+      <div className="space-y-1 max-h-[400px] overflow-y-auto">
         {rooms.map((room) => (
           <div
             key={room.id}
-            className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
+            className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-white/[0.04] text-sm transition-colors"
           >
-            <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono text-gray-700 dark:text-gray-300">
+            <span className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-white/[0.06] rounded-md text-xs font-mono text-gray-500 dark:text-gray-400 shrink-0">
               {room.id}
             </span>
             <select
               value={room.room_type}
               onChange={(e) => updateRoom(room.id, "room_type", e.target.value)}
-              className="flex-1 border border-gray-200 dark:border-gray-600 rounded px-2 py-1 text-sm bg-white dark:bg-gray-700 dark:text-gray-200"
+              className="flex-1 border border-gray-200 dark:border-white/[0.08] rounded-lg px-2 py-1 text-sm bg-white dark:bg-white/[0.04] dark:text-gray-200 focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-colors"
             >
               {ROOM_TYPES.map((rt) => (
                 <option key={rt.value} value={rt.value}>
@@ -169,11 +169,11 @@ export function RoomEditor({ jobId, onPlanRegenerated }: RoomEditorProps) {
               type="text"
               value={room.label}
               onChange={(e) => updateRoom(room.id, "label", e.target.value)}
-              className="w-24 border border-gray-200 dark:border-gray-600 rounded px-2 py-1 text-sm bg-white dark:bg-gray-700 dark:text-gray-200"
+              className="w-24 border border-gray-200 dark:border-white/[0.08] rounded-lg px-2 py-1 text-sm bg-white dark:bg-white/[0.04] dark:text-gray-200 focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-colors"
               placeholder="Label"
             />
-            <span className="text-xs text-gray-400 w-16 text-right">
-              {room.area > 0 ? `${(room.area / 1e6).toFixed(1)}m²` : ""}
+            <span className="text-xs text-gray-400 dark:text-gray-600 w-16 text-right tabular-nums font-mono">
+              {room.area > 0 ? `${(room.area / 1e6).toFixed(1)}m\u00B2` : ""}
             </span>
           </div>
         ))}

@@ -32,8 +32,8 @@ export function MetricsPanel({ jobId }: MetricsPanelProps) {
 
   if (error) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-        <p className="text-xs text-gray-400">{t("metrics.unavailable")}</p>
+      <div className="glass-card p-4">
+        <p className="text-xs text-gray-400 dark:text-gray-600">{t("metrics.unavailable")}</p>
       </div>
     );
   }
@@ -49,43 +49,43 @@ export function MetricsPanel({ jobId }: MetricsPanelProps) {
   ];
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
+    <div className="glass-card p-4">
+      <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
         {t("metrics.title")}
       </h3>
       <div className="space-y-1.5">
         {steps.map((s) => (
           <div key={s.label} className="flex justify-between text-xs">
-            <span className="text-gray-500 dark:text-gray-400">{s.label}</span>
-            <span className="font-mono text-gray-700 dark:text-gray-200">{s.value}</span>
+            <span className="text-gray-500 dark:text-gray-500">{s.label}</span>
+            <span className="font-mono tabular-nums text-gray-700 dark:text-gray-300">{s.value}</span>
           </div>
         ))}
-        <div className="border-t border-gray-100 dark:border-gray-600 pt-1.5 mt-1.5">
+        <div className="border-t border-gray-100 dark:border-white/[0.06] pt-1.5 mt-1.5">
           <div className="flex justify-between text-xs font-semibold">
             <span className="text-gray-700 dark:text-gray-200">{t("metrics.total")}</span>
-            <span className="font-mono text-red-600">{formatMs(metrics.total_pipeline_ms)}</span>
+            <span className="font-mono tabular-nums text-red-500">{formatMs(metrics.total_pipeline_ms)}</span>
           </div>
         </div>
-        <div className="border-t border-gray-100 dark:border-gray-600 pt-1.5 mt-1.5 space-y-1">
+        <div className="border-t border-gray-100 dark:border-white/[0.06] pt-1.5 mt-1.5 space-y-1">
           <div className="flex justify-between text-xs">
-            <span className="text-gray-500 dark:text-gray-400">{t("metrics.walls")}</span>
-            <span className="font-mono text-gray-700 dark:text-gray-200">{metrics.entities_walls}</span>
+            <span className="text-gray-500 dark:text-gray-500">{t("metrics.walls")}</span>
+            <span className="font-mono tabular-nums text-gray-700 dark:text-gray-300">{metrics.entities_walls}</span>
           </div>
           <div className="flex justify-between text-xs">
-            <span className="text-gray-500 dark:text-gray-400">{t("metrics.doors")}</span>
-            <span className="font-mono text-gray-700 dark:text-gray-200">{metrics.entities_doors}</span>
+            <span className="text-gray-500 dark:text-gray-500">{t("metrics.doors")}</span>
+            <span className="font-mono tabular-nums text-gray-700 dark:text-gray-300">{metrics.entities_doors}</span>
           </div>
           <div className="flex justify-between text-xs">
-            <span className="text-gray-500 dark:text-gray-400">{t("metrics.rooms")}</span>
-            <span className="font-mono text-gray-700 dark:text-gray-200">{metrics.rooms_detected} {t("metrics.detected")}, {metrics.rooms_classified} {t("metrics.classified")}</span>
+            <span className="text-gray-500 dark:text-gray-500">{t("metrics.rooms")}</span>
+            <span className="font-mono tabular-nums text-gray-700 dark:text-gray-300">{metrics.rooms_detected} {t("metrics.detected")}, {metrics.rooms_classified} {t("metrics.classified")}</span>
           </div>
           <div className="flex justify-between text-xs">
-            <span className="text-gray-500 dark:text-gray-400">SVG</span>
-            <span className="font-mono text-gray-700 dark:text-gray-200">{formatBytes(metrics.svg_size_bytes)}</span>
+            <span className="text-gray-500 dark:text-gray-500">SVG</span>
+            <span className="font-mono tabular-nums text-gray-700 dark:text-gray-300">{formatBytes(metrics.svg_size_bytes)}</span>
           </div>
           <div className="flex justify-between text-xs">
-            <span className="text-gray-500 dark:text-gray-400">PDF</span>
-            <span className="font-mono text-gray-700 dark:text-gray-200">{formatBytes(metrics.pdf_size_bytes)}</span>
+            <span className="text-gray-500 dark:text-gray-500">PDF</span>
+            <span className="font-mono tabular-nums text-gray-700 dark:text-gray-300">{formatBytes(metrics.pdf_size_bytes)}</span>
           </div>
         </div>
       </div>

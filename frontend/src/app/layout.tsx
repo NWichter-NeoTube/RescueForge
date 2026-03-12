@@ -14,6 +14,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  themeColor: "#111827",
 };
 
 export default function RootLayout({
@@ -22,11 +23,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="de" className="light">
+    <html lang="de" className="dark">
       <head>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       </head>
-      <body className="bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
+      <body className="bg-gray-50 dark:bg-gray-950 min-h-screen transition-colors duration-300">
         <ErrorBoundary>
           <I18nProvider>
             <ToastProvider>{children}</ToastProvider>

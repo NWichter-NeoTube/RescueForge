@@ -39,17 +39,17 @@ export function ComparisonView({ jobId }: ComparisonViewProps) {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8 text-center" aria-busy="true">
-        <div className="animate-spin w-8 h-8 border-2 border-red-600 border-t-transparent rounded-full mx-auto mb-3" />
-        <p className="text-gray-500 dark:text-gray-400">{t("compare.loading")}</p>
+      <div className="glass-card p-8 text-center" aria-busy="true">
+        <div className="animate-spin w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full mx-auto mb-3" />
+        <p className="text-gray-500 dark:text-gray-500">{t("compare.loading")}</p>
       </div>
     );
   }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600 px-4 py-2">
+      <div className="glass-card overflow-hidden">
+        <div className="bg-gray-50/50 dark:bg-white/[0.02] border-b border-gray-200/60 dark:border-white/[0.06] px-4 py-2.5">
           <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("compare.original")}</span>
         </div>
         <div className="p-2 h-[500px] flex items-center justify-center">
@@ -59,12 +59,12 @@ export function ComparisonView({ jobId }: ComparisonViewProps) {
               className="w-full h-full [&>svg]:w-full [&>svg]:h-full [&>svg]:object-contain"
             />
           ) : (
-            <p className="text-gray-400 text-sm">{t("compare.unavailable")}</p>
+            <p className="text-gray-400 dark:text-gray-600 text-sm">{t("compare.unavailable")}</p>
           )}
         </div>
       </div>
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="bg-red-50 dark:bg-red-900/30 border-b dark:border-gray-600 px-4 py-2">
+      <div className="glass-card overflow-hidden">
+        <div className="bg-red-50/50 dark:bg-red-500/5 border-b border-red-200/40 dark:border-red-500/10 px-4 py-2.5">
           <span className="text-sm font-medium text-red-700 dark:text-red-400">{t("compare.generated")}</span>
         </div>
         <div className="p-2 h-[500px] flex items-center justify-center">
@@ -74,7 +74,7 @@ export function ComparisonView({ jobId }: ComparisonViewProps) {
               className="w-full h-full [&>svg]:w-full [&>svg]:h-full [&>svg]:object-contain"
             />
           ) : (
-            <p className="text-gray-400 text-sm">{t("compare.unavailable")}</p>
+            <p className="text-gray-400 dark:text-gray-600 text-sm">{t("compare.unavailable")}</p>
           )}
         </div>
       </div>

@@ -37,25 +37,25 @@ export function LayerPanel({ svgContainerRef }: LayerPanelProps) {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">{t("layer.title")}</h3>
-      <div className="space-y-2">
+    <div className="glass-card p-4">
+      <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">{t("layer.title")}</h3>
+      <div className="space-y-1.5">
         {LAYERS.map((layer) => (
           <label
             key={layer.id}
-            className="flex items-center gap-2 cursor-pointer group"
+            className="flex items-center gap-2.5 cursor-pointer group px-2 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors"
           >
             <input
               type="checkbox"
               checked={visibility[layer.id]}
               onChange={() => toggleLayer(layer.id)}
-              className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+              className="rounded border-gray-300 dark:border-gray-600 text-red-600 focus:ring-red-500 focus:ring-offset-0 dark:bg-white/[0.06]"
             />
             <span
-              className="w-3 h-3 rounded-sm border border-gray-300"
+              className="w-3 h-3 rounded-sm border border-gray-200 dark:border-gray-700 shrink-0"
               style={{ backgroundColor: layer.color }}
             />
-            <span className="text-sm text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">
+            <span className="text-sm text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-200 transition-colors">
               {t(layer.key)}
             </span>
           </label>

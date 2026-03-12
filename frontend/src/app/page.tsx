@@ -12,6 +12,7 @@ import { RoomEditor } from "@/components/RoomEditor";
 import { MetricsPanel } from "@/components/MetricsPanel";
 import { ComparisonView } from "@/components/ComparisonView";
 import { SupplementaryPlanViewer } from "@/components/SupplementaryPlanViewer";
+import { Logo } from "@/components/Logo";
 import {
   uploadFile,
   uploadBatch,
@@ -38,9 +39,11 @@ export default function Home() {
   const { t, locale, setLocale } = useI18n();
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("rescueforge-dark") === "true";
+      const stored = localStorage.getItem("rescueforge-dark");
+      // Default to dark if not set
+      return stored === null ? true : stored === "true";
     }
-    return false;
+    return true;
   });
   const [jobId, setJobId] = useState<string | null>(null);
   const [status, setStatus] = useState<JobStatus | null>(null);
@@ -60,7 +63,7 @@ export default function Home() {
     localStorage.setItem("rescueforge-dark", String(darkMode));
   }, [darkMode]);
 
-  // Keyboard shortcuts: Ctrl+S → SVG download, Ctrl+P → PDF download
+  // Keyboard shortcuts: Ctrl+S -> SVG download, Ctrl+P -> PDF download
   useEffect(() => {
     if (!isComplete || !jobId) return;
 
@@ -150,56 +153,62 @@ export default function Home() {
       title: t("feature.cleanup.title"),
       desc: t("feature.cleanup.desc"),
       gradient: "from-blue-500 to-cyan-400",
+      iconBg: "bg-blue-500/10 dark:bg-blue-500/20",
+      iconColor: "text-blue-500",
     },
     {
       icon: Brain,
       title: t("feature.ai.title"),
       desc: t("feature.ai.desc"),
       gradient: "from-purple-500 to-pink-400",
+      iconBg: "bg-purple-500/10 dark:bg-purple-500/20",
+      iconColor: "text-purple-500",
     },
     {
       icon: ShieldCheck,
       title: t("feature.fks.title"),
       desc: t("feature.fks.desc"),
       gradient: "from-red-500 to-orange-400",
+      iconBg: "bg-red-500/10 dark:bg-red-500/20",
+      iconColor: "text-red-500",
     },
   ];
 
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl border-b border-gray-200/60 dark:border-white/[0.06]">
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-500 rounded-lg flex items-center justify-center shadow-md shadow-red-600/20">
-              <span className="text-white font-bold text-lg">RF</span>
-            </div>
+            <Logo size={36} />
             <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">RescueForge</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-white tracking-tight">
+                RescueForge
+              </h1>
+              <p className="text-xs text-gray-500 dark:text-gray-500">
                 {t("app.subtitle")}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {/* Language toggle */}
             <button
               onClick={() => setLocale(locale === "en" ? "de" : "en")}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-all text-sm"
               aria-label="Switch language"
               title={locale === "en" ? "Deutsch" : "English"}
             >
-              <Globe size={16} />
+              <Globe size={15} />
               <span className="uppercase font-medium text-xs">{locale}</span>
             </button>
             {/* Dark mode toggle */}
             <button
               onClick={() => setDarkMode((d) => !d)}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-all"
               aria-label={darkMode ? t("darkMode.light") : t("darkMode.dark")}
               title={darkMode ? "Light Mode" : "Dark Mode"}
             >
-              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+              {darkMode ? <Sun size={16} /> : <Moon size={16} />}
             </button>
           </div>
         </div>
@@ -208,12 +217,17 @@ export default function Home() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {!isComplete ? (
-          <div className="max-w-2xl mx-auto">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+          <div className="max-w-2xl mx-auto animate-fade-in">
+            {/* Hero Section */}
+            <div className="text-center mb-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 dark:bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-medium mb-4">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                DIN 14095 / FKS
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-3 tracking-tight">
                 {t("upload.title")}
               </h2>
-              <p className="text-gray-600 dark:text-gray-400 max-w-lg mx-auto">
+              <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto text-sm leading-relaxed">
                 {t("upload.description")}
               </p>
             </div>
@@ -239,11 +253,11 @@ export default function Home() {
                 {batchJobs.map((job) => (
                   <div key={job.job_id} className="flex items-center gap-3 text-xs">
                     <span className="text-gray-500 dark:text-gray-400 truncate w-40">{job.filename}</span>
-                    <div className="flex-1 bg-gray-100 dark:bg-gray-600 rounded-full h-1.5">
+                    <div className="flex-1 bg-gray-100 dark:bg-white/[0.06] rounded-full h-1.5">
                       <div
-                        className={`h-1.5 rounded-full transition-all ${
+                        className={`h-1.5 rounded-full transition-all duration-500 ${
                           job.status?.status === "completed"
-                            ? "bg-green-500"
+                            ? "bg-emerald-500"
                             : job.status?.status === "failed"
                               ? "bg-red-500"
                               : "bg-red-400"
@@ -260,7 +274,7 @@ export default function Home() {
             )}
 
             {error && (
-              <div className="mt-6 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start justify-between">
+              <div className="mt-6 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl p-4 flex items-start justify-between animate-slide-up">
                 <p className="text-red-700 dark:text-red-400 text-sm">{error}</p>
                 <button
                   onClick={() => setError(null)}
@@ -273,31 +287,32 @@ export default function Home() {
             )}
 
             {/* Feature Cards */}
-            <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-6">
-              {features.map((f) => (
+            <div className="mt-14 grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {features.map((f, i) => (
                 <div
                   key={f.title}
-                  className="group relative text-center p-6 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:shadow-gray-200/50 dark:hover:shadow-gray-900/50 transition-all duration-300 hover:-translate-y-0.5"
+                  className="group relative text-center p-6 rounded-2xl glass-card hover:border-gray-300/60 dark:hover:border-white/[0.12] transition-all duration-300 hover:-translate-y-0.5"
+                  style={{ animationDelay: `${i * 100}ms` }}
                 >
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${f.gradient} flex items-center justify-center mx-auto mb-4 shadow-lg shadow-gray-300/30 dark:shadow-gray-900/40`}>
-                    <f.icon size={24} className="text-white" />
+                  <div className={`w-11 h-11 rounded-xl ${f.iconBg} flex items-center justify-center mx-auto mb-4`}>
+                    <f.icon size={20} className={f.iconColor} />
                   </div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+                  <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-1.5">
                     {f.title}
                   </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{f.desc}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 leading-relaxed">{f.desc}</p>
                 </div>
               ))}
             </div>
           </div>
         ) : (
-          <div>
+          <div className="animate-fade-in">
             <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
               <div className="flex items-center gap-4 min-w-0">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white whitespace-nowrap">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight whitespace-nowrap">
                   {t("plan.title")}
                 </h2>
-                <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5 overflow-x-auto">
+                <div className="flex bg-gray-100 dark:bg-white/[0.06] rounded-xl p-1 overflow-x-auto border border-transparent dark:border-white/[0.06]">
                   {([
                     { key: "plan", label: t("plan.tab.floor") },
                     { key: "cover", label: t("plan.tab.cover") },
@@ -307,9 +322,9 @@ export default function Home() {
                     <button
                       key={tab.key}
                       onClick={() => setViewMode(tab.key)}
-                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                         viewMode === tab.key
-                          ? "bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm"
+                          ? "bg-white dark:bg-white/[0.1] text-gray-900 dark:text-white shadow-sm"
                           : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                       }`}
                     >
@@ -318,7 +333,7 @@ export default function Home() {
                   ))}
                 </div>
               </div>
-              <div className="flex gap-3 items-center">
+              <div className="flex gap-2 items-center">
                 {batchJobs.length > 1 && (
                   <select
                     value={jobId!}
@@ -327,7 +342,7 @@ export default function Home() {
                       setPlanVersion((v) => v + 1);
                     }}
                     aria-label={t("plan.selectFloor")}
-                    className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm border-0"
+                    className="px-3 py-2 bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-200 rounded-lg text-sm border border-transparent dark:border-white/[0.06]"
                   >
                     {batchJobs
                       .filter((j) => j.status?.status === "completed")
@@ -347,7 +362,7 @@ export default function Home() {
                     setViewMode("plan");
                     setBatchJobs([]);
                   }}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/[0.1] border border-transparent dark:border-white/[0.06] transition-all"
                   aria-label={t("plan.newPlan.aria")}
                 >
                   <Plus size={16} />
@@ -371,7 +386,7 @@ export default function Home() {
                 description={t("situation.desc")}
               />
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-6">
                 <PlanViewer jobId={jobId!} svgContainerRef={svgContainerRef} key={`plan-${planVersion}`} />
                 <div className="space-y-4">
                   <LayerPanel svgContainerRef={svgContainerRef} />
