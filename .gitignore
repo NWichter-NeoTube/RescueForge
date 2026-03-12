@@ -29,5 +29,3 @@ outputs/
 testdata/*.dwg
 testdata/*.dxf
 testdata/*.zip
-docs/
-
