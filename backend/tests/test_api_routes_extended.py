@@ -281,35 +281,32 @@ class TestJobStatusStates:
     def test_pending_state_with_directory(self, client, job_id):
         """PENDING state with existing directory should return queued status."""
         from app.config import settings
+        from app.worker import job_store
 
         upload_dir = Path(settings.upload_dir) / job_id
         upload_dir.mkdir(parents=True, exist_ok=True)
+        job_store.create(job_id)
 
-        mock_result = MagicMock()
-        mock_result.state = "PENDING"
-
-        with patch("app.api.routes.process_floor_plan_task") as mock_task:
-            mock_task.AsyncResult.return_value = mock_result
-            res = client.get(f"/api/jobs/{job_id}")
+        res = client.get(f"/api/jobs/{job_id}")
 
         assert res.status_code == 200
         data = res.json()
         assert data["status"] == "pending"
 
         upload_dir.rmdir()
+        job_store.remove(job_id)
 
     def test_success_state(self, client, job_id):
         """SUCCESS state should return completed status with URLs."""
-        mock_result = MagicMock()
-        mock_result.state = "SUCCESS"
-        mock_result.get.return_value = {
+        from app.worker import job_store
+
+        job_store.create(job_id)
+        job_store.set_success(job_id, {
             "svg_url": f"/api/jobs/{job_id}/svg",
             "pdf_url": f"/api/jobs/{job_id}/pdf",
-        }
+        })
 
-        with patch("app.api.routes.process_floor_plan_task") as mock_task:
-            mock_task.AsyncResult.return_value = mock_result
-            res = client.get(f"/api/jobs/{job_id}")
+        res = client.get(f"/api/jobs/{job_id}")
 
         assert res.status_code == 200
         data = res.json()
@@ -317,46 +314,51 @@ class TestJobStatusStates:
         assert data["progress"] == 1.0
         assert "svg" in data.get("result_svg", "")
 
+        job_store.remove(job_id)
+
     def test_failure_state(self, client, job_id):
         """FAILURE state should return failed status with error message."""
-        mock_result = MagicMock()
-        mock_result.state = "FAILURE"
-        mock_result.result = Exception("DXF parse error")
+        from app.worker import job_store
 
-        with patch("app.api.routes.process_floor_plan_task") as mock_task:
-            mock_task.AsyncResult.return_value = mock_result
-            res = client.get(f"/api/jobs/{job_id}")
+        job_store.create(job_id)
+        job_store.set_failure(job_id, "DXF parse error")
+
+        res = client.get(f"/api/jobs/{job_id}")
 
         assert res.status_code == 200
         data = res.json()
         assert data["status"] == "failed"
         assert "DXF parse error" in data["message"]
 
+        job_store.remove(job_id)
+
     def test_progress_state(self, client, job_id):
         """PROGRESS state should return current step and progress."""
-        mock_result = MagicMock()
-        mock_result.state = "PROGRESS"
-        mock_result.info = {"step": "classifying", "progress": 0.6}
+        from app.worker import job_store
 
-        with patch("app.api.routes.process_floor_plan_task") as mock_task:
-            mock_task.AsyncResult.return_value = mock_result
-            res = client.get(f"/api/jobs/{job_id}")
+        job_store.create(job_id)
+        job_store.update_progress(job_id, "classifying", 0.6)
+
+        res = client.get(f"/api/jobs/{job_id}")
 
         assert res.status_code == 200
         data = res.json()
         assert data["status"] == "classifying"
         assert data["progress"] == 0.6
 
+        job_store.remove(job_id)
+
     def test_progress_state_unknown_step(self, client, job_id):
         """Unknown step in PROGRESS state should default to parsing."""
-        mock_result = MagicMock()
-        mock_result.state = "PROGRESS"
-        mock_result.info = {"step": "nonexistent_step", "progress": 0.5}
+        from app.worker import job_store
 
-        with patch("app.api.routes.process_floor_plan_task") as mock_task:
-            mock_task.AsyncResult.return_value = mock_result
-            res = client.get(f"/api/jobs/{job_id}")
+        job_store.create(job_id)
+        job_store.update_progress(job_id, "nonexistent_step", 0.5)
+
+        res = client.get(f"/api/jobs/{job_id}")
 
         assert res.status_code == 200
         data = res.json()
         assert data["status"] == "parsing"  # fallback
+
+        job_store.remove(job_id)

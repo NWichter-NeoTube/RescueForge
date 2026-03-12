@@ -1,21 +1,69 @@
-from celery import Celery
+"""In-memory job store for background processing (replaces Celery + Redis)."""
 
-from app.config import settings
+from __future__ import annotations
 
-celery_app = Celery(
-    "rescueforge",
-    broker=settings.redis_url,
-    backend=settings.redis_url,
-)
+import asyncio
+import logging
+import threading
+from dataclasses import dataclass, field
+from typing import Any
 
-celery_app.conf.update(
-    task_serializer="json",
-    result_serializer="json",
-    accept_content=["json"],
-    timezone="Europe/Zurich",
-    task_track_started=True,
-    result_expires=3600,
-)
+logger = logging.getLogger(__name__)
 
-# Auto-discover tasks
-celery_app.autodiscover_tasks(["app.api"])
+
+@dataclass
+class JobState:
+    """Tracks state for a single background job."""
+
+    status: str = "PENDING"  # PENDING | PROGRESS | SUCCESS | FAILURE
+    progress: float = 0.0
+    step: str = ""
+    result: dict[str, Any] | None = None
+    error: str | None = None
+
+
+class JobStore:
+    """Thread-safe in-memory job store."""
+
+    def __init__(self) -> None:
+        self._jobs: dict[str, JobState] = {}
+        self._lock = threading.Lock()
+
+    def create(self, job_id: str) -> None:
+        with self._lock:
+            self._jobs[job_id] = JobState()
+
+    def get(self, job_id: str) -> JobState | None:
+        with self._lock:
+            return self._jobs.get(job_id)
+
+    def update_progress(self, job_id: str, step: str, progress: float) -> None:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job:
+                job.status = "PROGRESS"
+                job.step = step
+                job.progress = progress
+
+    def set_success(self, job_id: str, result: dict[str, Any]) -> None:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job:
+                job.status = "SUCCESS"
+                job.progress = 1.0
+                job.result = result
+
+    def set_failure(self, job_id: str, error: str) -> None:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job:
+                job.status = "FAILURE"
+                job.error = error
+
+    def remove(self, job_id: str) -> None:
+        with self._lock:
+            self._jobs.pop(job_id, None)
+
+
+# Singleton instance
+job_store = JobStore()

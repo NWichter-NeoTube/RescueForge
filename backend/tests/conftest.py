@@ -16,7 +16,6 @@ def pytest_addoption(parser):
     )
 
 # Override settings for testing
-os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("UPLOAD_DIR", "/tmp/rescueforge_test/uploads")
 os.environ.setdefault("OUTPUT_DIR", "/tmp/rescueforge_test/outputs")
 

@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch, PropertyMock
 import pytest
 
 from app.api.websocket import _step_label
+from app.worker import job_store
 
 
 # ── _step_label Tests ────────────────────────────────────────
@@ -60,44 +61,44 @@ class TestWebSocketEndpoint:
         """Valid UUID should be accepted."""
         job_id = "12345678-1234-1234-1234-123456789abc"
 
-        # Mock the Celery AsyncResult to return PENDING state
-        mock_result = MagicMock()
-        mock_result.state = "PENDING"
+        # Create a PENDING job in the store
+        job_store.create(job_id)
 
-        with patch("app.api.websocket.process_floor_plan_task") as mock_task:
-            mock_task.AsyncResult.return_value = mock_result
-            try:
-                with client.websocket_connect(f"/api/ws/{job_id}") as ws:
-                    # Connection should be accepted, we just connect then close
-                    pass
-            except Exception:
-                pass  # Expected: connection closes after we disconnect
+        try:
+            with client.websocket_connect(f"/api/ws/{job_id}") as ws:
+                # Connection should be accepted, we just connect then close
+                pass
+        except Exception:
+            pass  # Expected: connection closes after we disconnect
+        finally:
+            job_store.remove(job_id)
 
     def test_progress_state_sends_update(self, client):
         """PROGRESS state should send progress update via WebSocket."""
         job_id = "12345678-1234-1234-1234-123456789abc"
 
+        job_store.create(job_id)
+        job_store.update_progress(job_id, "parsing", 0.3)
+
+        # After the first read, set to SUCCESS so the loop terminates
+        original_get = job_store.get
         call_count = 0
 
-        def create_mock_result(*args):
+        def patched_get(jid):
             nonlocal call_count
             call_count += 1
-            mock = MagicMock()
-            if call_count == 1:
-                mock.state = "PROGRESS"
-                mock.info = {"step": "parsing", "progress": 0.3}
-            else:
-                mock.state = "SUCCESS"
-                mock.get.return_value = {
+            job = original_get(jid)
+            if job and call_count > 1:
+                job.status = "SUCCESS"
+                job.result = {
                     "svg_url": "/api/jobs/test/svg",
                     "pdf_url": "/api/jobs/test/pdf",
                     "rooms_count": 5,
                     "walls_count": 100,
                 }
-            return mock
+            return job
 
-        with patch("app.api.websocket.process_floor_plan_task") as mock_task:
-            mock_task.AsyncResult = create_mock_result
+        with patch.object(job_store, "get", side_effect=patched_get):
             with patch("app.api.websocket.asyncio.sleep"):
                 try:
                     with client.websocket_connect(f"/api/ws/{job_id}") as ws:
@@ -107,41 +108,43 @@ class TestWebSocketEndpoint:
                         assert data["progress"] == 0.3
                 except Exception:
                     pass
+                finally:
+                    job_store.remove(job_id)
 
     def test_success_state_sends_complete(self, client):
         """SUCCESS state should send complete message."""
         job_id = "12345678-1234-1234-1234-123456789abc"
 
-        mock_result = MagicMock()
-        mock_result.state = "SUCCESS"
-        mock_result.get.return_value = {
+        job_store.create(job_id)
+        job_store.set_success(job_id, {
             "svg_url": f"/api/jobs/{job_id}/svg",
             "pdf_url": f"/api/jobs/{job_id}/pdf",
             "rooms_count": 8,
             "walls_count": 200,
-        }
+        })
 
-        with patch("app.api.websocket.process_floor_plan_task") as mock_task:
-            mock_task.AsyncResult.return_value = mock_result
+        try:
             with client.websocket_connect(f"/api/ws/{job_id}") as ws:
                 data = ws.receive_json()
                 assert data["type"] == "complete"
                 assert data["status"] == "completed"
                 assert data["progress"] == 1.0
                 assert "svg_url" in data
+        finally:
+            job_store.remove(job_id)
 
     def test_failure_state_sends_error(self, client):
         """FAILURE state should send error message."""
         job_id = "12345678-1234-1234-1234-123456789abc"
 
-        mock_result = MagicMock()
-        mock_result.state = "FAILURE"
-        mock_result.result = Exception("Pipeline crashed")
+        job_store.create(job_id)
+        job_store.set_failure(job_id, "Pipeline crashed")
 
-        with patch("app.api.websocket.process_floor_plan_task") as mock_task:
-            mock_task.AsyncResult.return_value = mock_result
+        try:
             with client.websocket_connect(f"/api/ws/{job_id}") as ws:
                 data = ws.receive_json()
                 assert data["type"] == "error"
                 assert data["status"] == "failed"
                 assert "Pipeline crashed" in data["message"]
+        finally:
+            job_store.remove(job_id)

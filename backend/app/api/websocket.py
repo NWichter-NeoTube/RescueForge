@@ -7,8 +7,8 @@ import time
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app.api.tasks import process_floor_plan_task
 from app.models.schemas import ProcessingStatus
+from app.worker import job_store
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
     start = time.monotonic()
 
     try:
-        prev_state = None
+        prev_step = None
         prev_progress = -1.0
 
         while True:
@@ -52,16 +52,18 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                 })
                 break
 
-            result = process_floor_plan_task.AsyncResult(job_id)
-            state = result.state
+            job = job_store.get(job_id)
 
-            if state == "PROGRESS":
-                meta = result.info or {}
-                step = meta.get("step", "processing")
-                progress = meta.get("progress", 0.0)
+            if job is None:
+                await asyncio.sleep(0.5)
+                continue
+
+            if job.status == "PROGRESS":
+                step = job.step
+                progress = job.progress
 
                 # Only send if changed
-                if state != prev_state or progress != prev_progress:
+                if step != prev_step or progress != prev_progress:
                     try:
                         status_enum = ProcessingStatus(step)
                     except ValueError:
@@ -74,28 +76,28 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                         "progress": progress,
                         "message": _step_label(step),
                     })
-                    prev_state = state
+                    prev_step = step
                     prev_progress = progress
 
-            elif state == "SUCCESS":
-                task_result = result.get()
+            elif job.status == "SUCCESS":
+                result = job.result or {}
                 await websocket.send_json({
                     "type": "complete",
                     "status": "completed",
                     "progress": 1.0,
-                    "svg_url": task_result.get("svg_url"),
-                    "pdf_url": task_result.get("pdf_url"),
-                    "rooms_count": task_result.get("rooms_count", 0),
-                    "walls_count": task_result.get("walls_count", 0),
+                    "svg_url": result.get("svg_url"),
+                    "pdf_url": result.get("pdf_url"),
+                    "rooms_count": result.get("rooms_count", 0),
+                    "walls_count": result.get("walls_count", 0),
                 })
                 break
 
-            elif state == "FAILURE":
+            elif job.status == "FAILURE":
                 await websocket.send_json({
                     "type": "error",
                     "status": "failed",
                     "progress": 0.0,
-                    "message": str(result.result),
+                    "message": job.error or "Processing failed",
                 })
                 break
 

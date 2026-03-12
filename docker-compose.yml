@@ -3,7 +3,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: rescueforge-backend
     ports:
       - "8000"  # Internal only; frontend proxies via Next.js rewrites
     volumes:
@@ -13,11 +12,7 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENROUTER_MODEL=${OPENROUTER_MODEL:-google/gemini-2.5-flash}
       - OPENROUTER_VISION_MODEL=${OPENROUTER_VISION_MODEL:-google/gemini-2.5-flash}
-      - REDIS_URL=redis://redis:6379/0
       - MAX_UPLOAD_SIZE_MB=${MAX_UPLOAD_SIZE_MB:-50}
-    depends_on:
-      redis:
-        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -25,30 +20,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-
-  worker:
-    image: rescueforge-backend
-    command: uv run celery -A app.worker worker --loglevel=info --concurrency=2
-    volumes:
-      - upload_data:/app/uploads
-      - output_data:/app/outputs
-    environment:
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
-      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-google/gemini-2.5-flash}
-      - OPENROUTER_VISION_MODEL=${OPENROUTER_VISION_MODEL:-google/gemini-2.5-flash}
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      backend:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "uv", "run", "celery", "-A", "app.worker", "inspect", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
 
   frontend:
     build:
@@ -69,19 +40,6 @@ services:
       retries: 3
       start_period: 20s
 
-  redis:
-    image: redis:7-alpine
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
-
 volumes:
   upload_data:
   output_data:
-  redis_data:

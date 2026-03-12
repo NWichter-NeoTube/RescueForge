@@ -4,6 +4,7 @@ import json
 import logging
 import re
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, UploadFile
@@ -12,6 +13,7 @@ from fastapi.responses import FileResponse, Response
 from app.api.tasks import process_floor_plan_task
 from app.config import settings
 from app.models.schemas import JobStatus, ProcessingStatus, RoomType, UploadResponse
+from app.worker import job_store
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +23,9 @@ _UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 
 # Cache duration for completed plan outputs (1 hour)
 _CACHE_MAX_AGE = 3600
+
+# Thread pool for background pipeline processing
+_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="pipeline")
 
 
 def _validate_job_id(job_id: str) -> None:
@@ -37,6 +42,14 @@ def _cached_file_response(
     if cache:
         headers["Cache-Control"] = f"public, max-age={_CACHE_MAX_AGE}"
     return FileResponse(path, media_type=media_type, filename=path.name, headers=headers)
+
+
+def _run_pipeline(job_id: str, filepath: str, language: str) -> None:
+    """Run the pipeline in a background thread (fire-and-forget)."""
+    try:
+        process_floor_plan_task(job_id, filepath, language)
+    except Exception:
+        pass  # Error already recorded by the task itself
 
 
 # ── Upload ──────────────────────────────────────────────────
@@ -72,12 +85,9 @@ async def upload_file(file: UploadFile, language: str = "en"):
     filepath = job_dir / safe_name
     filepath.write_bytes(content)
 
-    # Queue processing task (use job_id as Celery task_id for easy lookup)
-    process_floor_plan_task.apply_async(
-        args=[job_id, str(filepath)],
-        kwargs={"language": language},
-        task_id=job_id,
-    )
+    # Register job and start processing in background thread
+    job_store.create(job_id)
+    _executor.submit(_run_pipeline, job_id, str(filepath), language)
 
     logger.info("Upload accepted: %s (job: %s, size: %d bytes)", safe_name, job_id, len(content))
 
@@ -126,11 +136,8 @@ async def upload_batch(files: list[UploadFile], language: str = "en"):
         filepath = job_dir / safe_name
         filepath.write_bytes(content)
 
-        process_floor_plan_task.apply_async(
-            args=[job_id, str(filepath)],
-            kwargs={"language": language},
-            task_id=job_id,
-        )
+        job_store.create(job_id)
+        _executor.submit(_run_pipeline, job_id, str(filepath), language)
         results.append({"job_id": job_id, "filename": safe_name})
 
     if not results:
@@ -152,12 +159,20 @@ async def get_job_status(job_id: str):
     """Get the processing status of a job."""
     _validate_job_id(job_id)
 
-    # Use Celery result backend (Redis) as single source of truth
-    result = process_floor_plan_task.AsyncResult(job_id)
-    state = result.state
+    job = job_store.get(job_id)
 
-    if state == "PENDING":
-        # Check if job directory exists to distinguish unknown from queued
+    if job is None:
+        # Check if job directory exists (completed jobs from before restart)
+        output_dir = Path(settings.output_dir) / job_id
+        if output_dir.exists() and (output_dir / "floor_plan_data.json").exists():
+            return JobStatus(
+                job_id=job_id,
+                status=ProcessingStatus.COMPLETED,
+                progress=1.0,
+                message="Processing complete",
+                result_svg=f"/api/jobs/{job_id}/svg",
+                result_pdf=f"/api/jobs/{job_id}/pdf",
+            )
         job_dir = Path(settings.upload_dir) / job_id
         if not job_dir.exists():
             raise HTTPException(404, "Job not found")
@@ -167,43 +182,48 @@ async def get_job_status(job_id: str):
             progress=0.0,
             message="Waiting for processing to start",
         )
-    elif state == "PROGRESS":
-        meta = result.info or {}
-        step = meta.get("step", "processing")
-        progress = meta.get("progress", 0.0)
+
+    if job.status == "PENDING":
+        return JobStatus(
+            job_id=job_id,
+            status=ProcessingStatus.PENDING,
+            progress=0.0,
+            message="Waiting for processing to start",
+        )
+    elif job.status == "PROGRESS":
         try:
-            status = ProcessingStatus(step)
+            status = ProcessingStatus(job.step)
         except ValueError:
             status = ProcessingStatus.PARSING
         return JobStatus(
             job_id=job_id,
             status=status,
-            progress=progress,
-            message=f"Processing: {step}",
+            progress=job.progress,
+            message=f"Processing: {job.step}",
         )
-    elif state == "SUCCESS":
-        task_result = result.get()
+    elif job.status == "SUCCESS":
+        result = job.result or {}
         return JobStatus(
             job_id=job_id,
             status=ProcessingStatus.COMPLETED,
             progress=1.0,
             message="Processing complete",
-            result_svg=task_result.get("svg_url"),
-            result_pdf=task_result.get("pdf_url"),
+            result_svg=result.get("svg_url"),
+            result_pdf=result.get("pdf_url"),
         )
-    elif state == "FAILURE":
+    elif job.status == "FAILURE":
         return JobStatus(
             job_id=job_id,
             status=ProcessingStatus.FAILED,
             progress=0.0,
-            message=str(result.result),
+            message=job.error or "Processing failed",
         )
 
     return JobStatus(
         job_id=job_id,
         status=ProcessingStatus.PENDING,
         progress=0.0,
-        message=f"State: {state}",
+        message=f"State: {job.status}",
     )
 
 

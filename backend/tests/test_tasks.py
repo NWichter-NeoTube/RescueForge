@@ -1,4 +1,4 @@
-"""Tests for Celery pipeline task — uses mocks to avoid real Celery worker."""
+"""Tests for pipeline task and in-memory job store."""
 
 import json
 from pathlib import Path
@@ -121,18 +121,72 @@ class TestPipelineStepTracking:
             assert len(step) > 0
 
 
-class TestTaskDecorator:
-    """Test task configuration (timeouts, acks_late, etc.)."""
+class TestJobStore:
+    """Test the in-memory job store."""
 
-    def test_task_registered(self):
-        """process_floor_plan task should be importable."""
+    def test_create_and_get(self):
+        """Creating a job should make it retrievable."""
+        from app.worker import JobStore
+        store = JobStore()
+        store.create("test-1")
+        job = store.get("test-1")
+        assert job is not None
+        assert job.status == "PENDING"
+
+    def test_get_nonexistent(self):
+        """Getting a nonexistent job should return None."""
+        from app.worker import JobStore
+        store = JobStore()
+        assert store.get("nonexistent") is None
+
+    def test_update_progress(self):
+        """Updating progress should change step and progress."""
+        from app.worker import JobStore
+        store = JobStore()
+        store.create("test-2")
+        store.update_progress("test-2", "parsing", 0.3)
+        job = store.get("test-2")
+        assert job.status == "PROGRESS"
+        assert job.step == "parsing"
+        assert job.progress == 0.3
+
+    def test_set_success(self):
+        """Setting success should store result."""
+        from app.worker import JobStore
+        store = JobStore()
+        store.create("test-3")
+        store.set_success("test-3", {"svg_url": "/api/jobs/test-3/svg"})
+        job = store.get("test-3")
+        assert job.status == "SUCCESS"
+        assert job.result["svg_url"] == "/api/jobs/test-3/svg"
+
+    def test_set_failure(self):
+        """Setting failure should store error message."""
+        from app.worker import JobStore
+        store = JobStore()
+        store.create("test-4")
+        store.set_failure("test-4", "DXF parse error")
+        job = store.get("test-4")
+        assert job.status == "FAILURE"
+        assert job.error == "DXF parse error"
+
+    def test_remove(self):
+        """Removing a job should make it no longer retrievable."""
+        from app.worker import JobStore
+        store = JobStore()
+        store.create("test-5")
+        store.remove("test-5")
+        assert store.get("test-5") is None
+
+
+class TestTaskImport:
+    """Test that the task function is importable."""
+
+    def test_task_importable(self):
+        """process_floor_plan_task should be importable."""
         from app.api.tasks import process_floor_plan_task
         assert process_floor_plan_task is not None
-
-    def test_task_name(self):
-        """Task should have the correct Celery name."""
-        from app.api.tasks import process_floor_plan_task
-        assert process_floor_plan_task.name == "process_floor_plan"
+        assert callable(process_floor_plan_task)
 
 
 class TestDwgDetectionInPipeline:

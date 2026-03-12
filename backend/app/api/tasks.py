@@ -1,4 +1,4 @@
-"""Celery tasks for background floor plan processing."""
+"""Background floor plan processing (runs in a thread pool)."""
 
 import json
 import logging
@@ -6,20 +6,12 @@ import time
 from pathlib import Path
 
 from app.config import settings
-from app.worker import celery_app
+from app.worker import job_store
 
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(
-    bind=True,
-    name="process_floor_plan",
-    time_limit=600,           # Hard kill after 10 minutes
-    soft_time_limit=550,      # Raise SoftTimeLimitExceeded after ~9 min
-    acks_late=True,           # Re-queue if worker crashes
-    reject_on_worker_lost=True,
-)
-def process_floor_plan_task(self, job_id: str, filepath: str, language: str = "en"):
+def process_floor_plan_task(job_id: str, filepath: str, language: str = "en") -> dict:
     """Process a floor plan file through the full pipeline.
 
     Steps:
@@ -49,7 +41,7 @@ def process_floor_plan_task(self, job_id: str, filepath: str, language: str = "e
     try:
         # Step 1: DWG conversion
         metrics["_last_step"] = "converting"
-        self.update_state(state="PROGRESS", meta={"step": "converting", "progress": 0.1})
+        job_store.update_progress(job_id, "converting", 0.1)
         t0 = time.time()
         if is_dwg_file(filepath):
             logger.info("[%s] Converting DWG to DXF...", job_id)
@@ -58,7 +50,7 @@ def process_floor_plan_task(self, job_id: str, filepath: str, language: str = "e
 
         # Step 2: Parse DXF
         metrics["_last_step"] = "parsing"
-        self.update_state(state="PROGRESS", meta={"step": "parsing", "progress": 0.2})
+        job_store.update_progress(job_id, "parsing", 0.2)
         logger.info("[%s] Parsing DXF...", job_id)
         t0 = time.time()
         floor_plan = parse_dxf(filepath)
@@ -69,7 +61,7 @@ def process_floor_plan_task(self, job_id: str, filepath: str, language: str = "e
 
         # Step 3: Detect rooms
         metrics["_last_step"] = "detecting_rooms"
-        self.update_state(state="PROGRESS", meta={"step": "detecting_rooms", "progress": 0.4})
+        job_store.update_progress(job_id, "detecting_rooms", 0.4)
         logger.info("[%s] Detecting rooms...", job_id)
         t0 = time.time()
         rooms = detect_rooms(floor_plan)
@@ -78,7 +70,7 @@ def process_floor_plan_task(self, job_id: str, filepath: str, language: str = "e
 
         # Step 4: Classify rooms
         metrics["_last_step"] = "classifying"
-        self.update_state(state="PROGRESS", meta={"step": "classifying", "progress": 0.6})
+        job_store.update_progress(job_id, "classifying", 0.6)
         logger.info("[%s] Classifying %d rooms...", job_id, len(rooms))
 
         t0 = time.time()
@@ -94,7 +86,7 @@ def process_floor_plan_task(self, job_id: str, filepath: str, language: str = "e
 
         # Step 5: Generate SVG
         metrics["_last_step"] = "generating"
-        self.update_state(state="PROGRESS", meta={"step": "generating", "progress": 0.8})
+        job_store.update_progress(job_id, "generating", 0.8)
         logger.info("[%s] Generating SVG...", job_id)
         t0 = time.time()
         suffix = tr("filename.orientation_plan", language)
@@ -112,7 +104,7 @@ def process_floor_plan_task(self, job_id: str, filepath: str, language: str = "e
 
         # Step 6: Export PDF
         metrics["_last_step"] = "exporting"
-        self.update_state(state="PROGRESS", meta={"step": "exporting", "progress": 0.9})
+        job_store.update_progress(job_id, "exporting", 0.9)
         logger.info("[%s] Exporting PDF...", job_id)
         t0 = time.time()
         pdf_name = f"{Path(filepath).stem}_{suffix}_{language}.pdf"
@@ -175,7 +167,7 @@ def process_floor_plan_task(self, job_id: str, filepath: str, language: str = "e
 
         logger.info("[%s] Processing complete! Metrics: %s", job_id, metrics)
 
-        return {
+        result = {
             "job_id": job_id,
             "svg_url": f"/api/jobs/{job_id}/svg",
             "pdf_url": f"/api/jobs/{job_id}/pdf",
@@ -183,6 +175,9 @@ def process_floor_plan_task(self, job_id: str, filepath: str, language: str = "e
             "walls_count": len(floor_plan.walls),
             "metrics": metrics,
         }
+
+        job_store.set_success(job_id, result)
+        return result
 
     except Exception as e:
         logger.error("[%s] Processing failed: %s", job_id, e, exc_info=True)
@@ -199,4 +194,5 @@ def process_floor_plan_task(self, job_id: str, filepath: str, language: str = "e
             error_path.write_text(json.dumps(error_data, indent=2))
         except Exception:
             pass  # Don't mask the original error
+        job_store.set_failure(job_id, str(e))
         raise
