@@ -14,32 +14,29 @@ export function Logo({ size = 36, className = "" }: { size?: number; className?:
         </linearGradient>
       </defs>
       <rect width="32" height="32" rx="8" fill="url(#logo-bg)" />
-      {/* Shield outline */}
+      {/* Shield shape */}
       <path
-        d="M16 4 L26 9 V17 C26 22.5 21.5 27 16 28 C10.5 27 6 22.5 6 17 V9 Z"
+        d="M16 3 L27 8.5 V17 C27 23 22 28 16 29 C10 28 5 23 5 17 V8.5 Z"
         fill="white"
-        opacity="0.15"
+        opacity="0.12"
       />
       <path
-        d="M16 6 L24 10 V17 C24 21.5 20.5 25.5 16 26.5 C11.5 25.5 8 21.5 8 17 V10 Z"
+        d="M16 5 L25 9.5 V17 C25 22 21 26.5 16 27.5 C11 26.5 7 22 7 17 V9.5 Z"
         fill="none"
         stroke="white"
-        strokeWidth="1.2"
-        opacity="0.9"
+        strokeWidth="1.3"
       />
-      {/* Floor plan lines inside shield */}
-      <line x1="11" y1="12" x2="21" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-      <line x1="11" y1="12" x2="11" y2="22" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-      <line x1="21" y1="12" x2="21" y2="22" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-      <line x1="11" y1="22" x2="21" y2="22" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-      <line x1="16" y1="12" x2="16" y2="18" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
-      <line x1="11" y1="17" x2="16" y2="17" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
-      {/* Small flame accent */}
-      <path
-        d="M16 8 C16 8 17.5 9.5 17.5 10.5 C17.5 11.3 16.8 12 16 12 C15.2 12 14.5 11.3 14.5 10.5 C14.5 9.5 16 8 16 8Z"
-        fill="#fbbf24"
-        opacity="0.9"
-      />
+      {/* 4-room floor plan inside shield */}
+      <rect x="10" y="11" width="12" height="12" rx="0.5" fill="none" stroke="white" strokeWidth="1.4" />
+      {/* Vertical center wall with door gap */}
+      <line x1="16" y1="11" x2="16" y2="15" stroke="white" strokeWidth="1.2" />
+      <line x1="16" y1="17" x2="16" y2="23" stroke="white" strokeWidth="1.2" />
+      {/* Horizontal center wall with door gap */}
+      <line x1="10" y1="17" x2="13.5" y2="17" stroke="white" strokeWidth="1.2" />
+      <line x1="18.5" y1="17" x2="22" y2="17" stroke="white" strokeWidth="1.2" />
+      {/* Door arcs */}
+      <path d="M16 15 A2 2 0 0 1 14 17" fill="none" stroke="white" strokeWidth="0.7" opacity="0.6" />
+      <path d="M16 17 A2 2 0 0 0 18.5 17" fill="none" stroke="white" strokeWidth="0.7" opacity="0.6" transform="translate(0.5,0)" />
     </svg>
   );
 }

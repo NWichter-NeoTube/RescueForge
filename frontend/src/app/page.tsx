@@ -217,92 +217,98 @@ export default function Home() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {!isComplete ? (
-          <div className="max-w-2xl mx-auto animate-fade-in">
-            {/* Hero Section */}
-            <div className="text-center mb-10">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 dark:bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-medium mb-4">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                DIN 14095 / FKS
+          <div className="animate-fade-in">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8 items-start">
+              {/* Left: Upload area */}
+              <div>
+                <div className="mb-8">
+                  <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-3 tracking-tight">
+                    {t("upload.title")}
+                  </h2>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed max-w-xl">
+                    {t("upload.description")}
+                  </p>
+                  <p className="text-gray-400 dark:text-gray-500 text-xs mt-2">
+                    {locale === "de"
+                      ? "Ausgabe erfolgt normkonform nach DIN 14095 und der Schweizer FKS-Richtlinie."
+                      : "Output is generated in compliance with DIN 14095 and the Swiss FKS guideline."}
+                  </p>
+                </div>
+
+                <FileUpload
+                  onFileSelect={handleFileUpload}
+                  onMultiFileSelect={handleMultiFileUpload}
+                  disabled={isProcessing}
+                  multiple
+                />
+
+                {isProcessing && status && (
+                  <div className="mt-6">
+                    <ProgressBar status={status} />
+                  </div>
+                )}
+
+                {isProcessing && batchJobs.length > 0 && (
+                  <div className="mt-6 space-y-2">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                      {t("progress.batch")} ({batchJobs.filter((j) => j.status?.status === "completed").length}/{batchJobs.length})
+                    </p>
+                    {batchJobs.map((job) => (
+                      <div key={job.job_id} className="flex items-center gap-3 text-xs">
+                        <span className="text-gray-500 dark:text-gray-400 truncate w-40">{job.filename}</span>
+                        <div className="flex-1 bg-gray-100 dark:bg-white/[0.06] rounded-full h-1.5">
+                          <div
+                            className={`h-1.5 rounded-full transition-all duration-500 ${
+                              job.status?.status === "completed"
+                                ? "bg-emerald-500"
+                                : job.status?.status === "failed"
+                                  ? "bg-red-500"
+                                  : "bg-red-400"
+                            }`}
+                            style={{ width: `${(job.status?.progress ?? 0) * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-gray-400 w-12 text-right">
+                          {Math.round((job.status?.progress ?? 0) * 100)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {error && (
+                  <div className="mt-6 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl p-4 flex items-start justify-between animate-slide-up">
+                    <p className="text-red-700 dark:text-red-400 text-sm">{error}</p>
+                    <button
+                      onClick={() => setError(null)}
+                      className="ml-3 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-lg leading-none"
+                      aria-label={t("error.close")}
+                    >
+                      &times;
+                    </button>
+                  </div>
+                )}
               </div>
-              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-3 tracking-tight">
-                {t("upload.title")}
-              </h2>
-              <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto text-sm leading-relaxed">
-                {t("upload.description")}
-              </p>
-            </div>
 
-            <FileUpload
-              onFileSelect={handleFileUpload}
-              onMultiFileSelect={handleMultiFileUpload}
-              disabled={isProcessing}
-              multiple
-            />
-
-            {isProcessing && status && (
-              <div className="mt-6">
-                <ProgressBar status={status} />
-              </div>
-            )}
-
-            {isProcessing && batchJobs.length > 0 && (
-              <div className="mt-6 space-y-2">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                  {t("progress.batch")} ({batchJobs.filter((j) => j.status?.status === "completed").length}/{batchJobs.length})
-                </p>
-                {batchJobs.map((job) => (
-                  <div key={job.job_id} className="flex items-center gap-3 text-xs">
-                    <span className="text-gray-500 dark:text-gray-400 truncate w-40">{job.filename}</span>
-                    <div className="flex-1 bg-gray-100 dark:bg-white/[0.06] rounded-full h-1.5">
-                      <div
-                        className={`h-1.5 rounded-full transition-all duration-500 ${
-                          job.status?.status === "completed"
-                            ? "bg-emerald-500"
-                            : job.status?.status === "failed"
-                              ? "bg-red-500"
-                              : "bg-red-400"
-                        }`}
-                        style={{ width: `${(job.status?.progress ?? 0) * 100}%` }}
-                      />
+              {/* Right: Feature cards */}
+              <div className="space-y-3 lg:pt-14">
+                {features.map((f) => (
+                  <div
+                    key={f.title}
+                    className="group flex items-start gap-3.5 p-4 rounded-2xl glass-card hover:border-gray-300/60 dark:hover:border-white/[0.12] transition-all duration-300"
+                  >
+                    <div className={`w-9 h-9 rounded-lg ${f.iconBg} flex items-center justify-center shrink-0`}>
+                      <f.icon size={18} className={f.iconColor} />
                     </div>
-                    <span className="text-gray-400 w-12 text-right">
-                      {Math.round((job.status?.progress ?? 0) * 100)}%
-                    </span>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-0.5">
+                        {f.title}
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-500 leading-relaxed">{f.desc}</p>
+                    </div>
                   </div>
                 ))}
               </div>
-            )}
-
-            {error && (
-              <div className="mt-6 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl p-4 flex items-start justify-between animate-slide-up">
-                <p className="text-red-700 dark:text-red-400 text-sm">{error}</p>
-                <button
-                  onClick={() => setError(null)}
-                  className="ml-3 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-lg leading-none"
-                  aria-label={t("error.close")}
-                >
-                  &times;
-                </button>
-              </div>
-            )}
-
-            {/* Feature Cards */}
-            <div className="mt-14 grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {features.map((f, i) => (
-                <div
-                  key={f.title}
-                  className="group relative text-center p-6 rounded-2xl glass-card hover:border-gray-300/60 dark:hover:border-white/[0.12] transition-all duration-300 hover:-translate-y-0.5"
-                  style={{ animationDelay: `${i * 100}ms` }}
-                >
-                  <div className={`w-11 h-11 rounded-xl ${f.iconBg} flex items-center justify-center mx-auto mb-4`}>
-                    <f.icon size={20} className={f.iconColor} />
-                  </div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-1.5">
-                    {f.title}
-                  </h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-500 leading-relaxed">{f.desc}</p>
-                </div>
-              ))}
             </div>
           </div>
         ) : (
