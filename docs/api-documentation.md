@@ -102,7 +102,7 @@ Content-Type: multipart/form-data
 GET /api/jobs/{job_id}
 ```
 
-Returns the current processing status. Uses Celery/Redis as single source of truth.
+Returns the current processing status from the in-memory JobStore.
 
 **Response** `200 OK`
 ```json
@@ -274,7 +274,7 @@ Content-Type: application/json
 
 | Stage | Description | Duration (typical) |
 |-------|-------------|-------------------|
-| `converting` | Convert DWG to DXF via LibreDWG | < 1 s |
+| `converting` | Convert DWG to DXF via ODA File Converter | < 1 s |
 | `parsing` | Extract entities (walls, doors, stairs) via ezdxf | ~500 ms |
 | `detecting_rooms` | Detect room polygons via Shapely polygonize | ~300 ms |
 | `classifying` | Classify rooms via OpenRouter Vision API | ~5 s |
@@ -288,7 +288,7 @@ Content-Type: application/json
 WS /api/ws/{job_id}
 ```
 
-Connect after uploading a file to receive real-time progress updates. The server polls Celery every 500 ms and sends updates only when state or progress changes.
+Connect after uploading a file to receive real-time progress updates. The server polls the in-memory JobStore every 500 ms and sends updates only when state or progress changes.
 
 ### Progress Message
 

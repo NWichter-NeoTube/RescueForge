@@ -116,7 +116,7 @@ Empfohlene Dauer: **3-5 Minuten**
 
 **Sagen:**
 > "66 Unit- und Integrationstests in 5 Suiten sichern die Qualität.
-> Das Backend läuft mit FastAPI + Celery, das Frontend mit Next.js 15."
+> Das Backend läuft mit FastAPI, das Frontend mit Next.js 15."
 
 ---
 

@@ -13,22 +13,9 @@ RescueForge ist eine webbasierte Lösung zur automatischen Transformation von CA
 │   (Next.js 15)  │                  │   (FastAPI)      │
 │   Port 3000     │                  │   Port 8000      │
 │                 │                  │                  │
-└─────────────────┘                  └────────┬─────────┘
-                                              │
-                                    Celery Task Queue
-                                              │
-                                     ┌────────▼─────────┐
-                                     │                  │
-                                     │  Celery Worker   │
-                                     │  (Pipeline)      │
-                                     │                  │
-                                     └────────┬─────────┘
-                                              │
-                                     ┌────────▼─────────┐
-                                     │                  │
-                                     │     Redis        │
-                                     │  (Broker + Cache)│
-                                     │                  │
+└─────────────────┘                  │  ThreadPool +    │
+                                     │  In-Memory       │
+                                     │  JobStore        │
                                      └──────────────────┘
 ```
 
@@ -36,15 +23,12 @@ RescueForge ist eine webbasierte Lösung zur automatischen Transformation von CA
 
 | Service | Image | Funktion | Ports |
 |---------|-------|----------|-------|
-| `backend` | rescueforge-backend | FastAPI REST API | 8000 (dynamisch) |
-| `worker` | rescueforge-backend | Celery Worker (Pipeline) | - |
-| `frontend` | rescueforge-frontend | Next.js Web UI | 3000 (dynamisch) |
-| `redis` | redis:7-alpine | Task Queue + Result Backend | 6379 (dynamisch) |
+| `backend` | rescueforge-backend | FastAPI REST API + Pipeline | 8000 (intern) |
+| `frontend` | rescueforge-frontend | Next.js Web UI | 3000 |
 
 Shared Volumes:
 - `upload_data` - Hochgeladene DWG/DXF-Dateien
 - `output_data` - Generierte SVG/PDF-Outputs
-- `redis_data` - Redis Persistenz
 
 ## Verarbeitungs-Pipeline
 
@@ -53,7 +37,7 @@ Shared Volumes:
        │
        ▼
  ┌─────────────────────┐
- │ 1. DWG Converter    │  LibreDWG (dwg2dxf)
+ │ 1. DWG Converter    │  ODA File Converter
  │    DWG → DXF        │  Nur falls .dwg Input
  └──────────┬──────────┘
             ▼
@@ -113,7 +97,7 @@ Shared Volumes:
 | GET | `/health` | Health Check (Version, Status) |
 | POST | `/api/upload` | DWG/DXF Upload (einzeln) |
 | POST | `/api/upload/batch` | Batch Upload (max 10 Dateien) |
-| GET | `/api/jobs/{id}` | Job Status (Celery) |
+| GET | `/api/jobs/{id}` | Job Status |
 | GET | `/api/jobs/{id}/svg` | FKS-Orientierungsplan (SVG) |
 | GET | `/api/jobs/{id}/pdf` | FKS-Orientierungsplan (PDF) |
 | GET | `/api/jobs/{id}/cover-sheet` | Deckblatt (SVG) |
@@ -224,10 +208,10 @@ Wenn AI nicht verfügbar, geometrische Regeln:
 |-----------|-----------|
 | Vektor-first (ezdxf) | Präziser als Bild-Umweg, behält Geometrie |
 | Vision API statt eigenes ML | Kein Training nötig, flexibel, einfach |
-| Celery + Redis | Langläufer im Hintergrund, skalierbar |
+| In-Memory JobStore | Einfach, kein Redis nötig, thread-sicher |
 | SciPy Voronoi + NetworkX | Korridormittellinien-Extraktion, gewichtete Wegfindung |
 | uv statt pip | 10x schneller, reproduzierbarer lockfile |
-| Docker Compose | Einfaches Setup, LibreDWG nativ kompiliert |
+| Docker Compose | Einfaches Setup, ODA File Converter vorinstalliert |
 | WeasyPrint | CSS-basiert, SVG-Support, kein Headless-Browser |
 | CairoSVG | Pixel-basierte visuelle Regressionstests |
 
@@ -242,4 +226,4 @@ Wenn AI nicht verfügbar, geometrische Regeln:
 - API Keys via .env (nicht committed)
 - DSG/GDPR-konform: Keine personenbezogenen Daten gespeichert
 - Non-Root Docker Container in Produktion
-- Celery Task-Timeouts (Hardlimit 600s, Softlimit 550s)
+- Background Tasks via ThreadPoolExecutor mit In-Memory JobStore

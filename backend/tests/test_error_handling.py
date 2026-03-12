@@ -208,20 +208,20 @@ class TestRoomTypeValidation:
 
 class TestSecurityHeaders:
     def test_security_middleware_imported(self):
-        """SecurityHeadersMiddleware should be importable (requires Celery in Docker)."""
+        """SecurityHeadersMiddleware should be importable."""
         try:
             from app.main import SecurityHeadersMiddleware
             assert SecurityHeadersMiddleware is not None
         except ImportError:
-            pytest.skip("Celery not available locally — runs in Docker CI")
+            pytest.skip("Not available locally — runs in Docker CI")
 
     def test_rate_limit_middleware_imported(self):
-        """RateLimitMiddleware should be importable (requires Celery in Docker)."""
+        """RateLimitMiddleware should be importable."""
         try:
             from app.main import RateLimitMiddleware
             assert RateLimitMiddleware is not None
         except ImportError:
-            pytest.skip("Celery not available locally — runs in Docker CI")
+            pytest.skip("Not available locally — runs in Docker CI")
 
 
 # ── Plan Generator Config Tests ──────────────────────────────

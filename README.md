@@ -31,7 +31,7 @@
 | Interactive room editor (reclassify & regenerate) | Done |
 | Batch upload (multi-floor processing) | Done |
 | WebSocket real-time progress | Done |
-| 341 automated tests (19 suites) | Done |
+| 328+ automated tests (19 suites) | Done |
 | CI/CD pipeline (GitHub Actions) | Done |
 | 13-slide presentation (PPTX) | Done |
 | AutoCAD plugin concept (Web-first architecture) | Done |
@@ -50,15 +50,15 @@
 ## Architecture
 
 ```
-Frontend (Next.js 15)  -->  Backend (FastAPI)  -->  Celery Worker
-     ^                        ^                      |
-     '-- WebSocket status ----'              Redis (task queue)
+Frontend (Next.js 15)  -->  Backend (FastAPI + In-Memory JobStore)
+     ^                        ^
+     '-- WebSocket status ----'
 ```
 
 ### Pipeline stages (10 steps)
 
 ```
-DWG -> [LibreDWG] -> DXF
+DWG -> [ODA File Converter] -> DXF
     -> [ezdxf] -> Entities (walls, doors, fire walls, fire doors, windows, sprinklers)
     -> [Unit Detection] -> Auto-correct declared units via building-size heuristic
     -> [Shapely + STRtree] -> Room polygons
@@ -87,21 +87,21 @@ DWG -> [LibreDWG] -> DXF
 
 | Component | Technology |
 |-----------|-----------|
-| Backend | Python 3.12, FastAPI, Celery |
+| Backend | Python 3.12, FastAPI, ThreadPoolExecutor |
 | Frontend | Next.js 15, React 19, Tailwind CSS, lucide-react |
 | i18n | Built-in EN/DE toggle (German default, localStorage persisted) |
-| CAD Parsing | ezdxf, LibreDWG |
+| CAD Parsing | ezdxf, ODA File Converter |
 | Geometry | Shapely (STRtree), NumPy, SciPy (Voronoi) |
 | Graph Routing | NetworkX (corridor centerline escape routes) |
 | AI Classification | OpenRouter (Gemini 2.5 Flash) with retry + heuristic fallback |
 | SVG Generation | svgwrite |
 | PDF Export | WeasyPrint |
-| Task Queue | Celery + Redis |
+| Background Jobs | In-Memory JobStore + ThreadPoolExecutor |
 | Security | SecurityHeadersMiddleware, RateLimitMiddleware, CSP, input validation |
 | Package Manager | uv |
 | Infrastructure | Docker Compose (non-root containers) |
 | CI/CD | GitHub Actions (lint, test, Docker build) |
-| Testing | pytest (341 backend tests, 19 suites), Cypress E2E |
+| Testing | pytest (328+ backend tests, 19 suites), Cypress E2E |
 | Visual Regression | CairoSVG pixel-based + JSON structural fingerprints |
 
 ## Quick Start
@@ -115,7 +115,7 @@ DWG -> [LibreDWG] -> DXF
 
 ```bash
 # Clone
-git clone https://github.com/your-org/rescueforge.git
+git clone https://github.com/NWichter-NeoTube/RescueForge.git
 cd rescueforge
 
 # Configure
@@ -126,7 +126,7 @@ cp .env.example .env
 docker compose up --build
 
 # Build & Run (production)
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+docker compose up --build -d
 
 # Check assigned ports
 docker compose ps
@@ -140,7 +140,7 @@ The frontend is available on port 3000. The backend uses an internal dynamic por
 |----------|-------------|---------|
 | `OPENROUTER_API_KEY` | OpenRouter API key for vision model | required |
 | `OPENROUTER_MODEL` | AI model to use | `google/gemini-2.5-flash` |
-| `REDIS_URL` | Redis connection string | `redis://redis:6379/0` |
+| `OPENROUTER_VISION_MODEL` | Vision model for room classification | `google/gemini-2.5-flash` |
 | `MAX_UPLOAD_SIZE_MB` | Max upload file size | `50` |
 | `CORS_ORIGINS` | Comma-separated allowed CORS origins | `*` |
 | `BACKEND_URL` | Internal backend URL for Next.js proxy | `http://backend:8000` |
@@ -186,7 +186,7 @@ The frontend is available on port 3000. The backend uses an internal dynamic por
 ### Security & Reliability
 - **SecurityHeadersMiddleware** — X-Content-Type-Options, X-Frame-Options, CSP, Referrer-Policy
 - **RateLimitMiddleware** — configurable request rate limiting
-- **Celery task timeouts** — hard limit 600s, soft limit 550s, acks_late
+- **Background task management** — ThreadPoolExecutor with in-memory JobStore
 - **Error persistence** — detailed error.json on pipeline failure (step, elapsed time, error type)
 - **Input validation** — room type enum validation, job ID format checks
 - **Non-root Docker containers** — production-hardened images
@@ -219,9 +219,9 @@ Interactive API docs available at `/docs` (Swagger UI) and `/redoc` (ReDoc).
 rescueforge/
 ├── backend/
 │   ├── app/
-│   │   ├── api/           # FastAPI routes, WebSocket, Celery tasks
+│   │   ├── api/           # FastAPI routes, WebSocket, background tasks
 │   │   ├── pipeline/      # Core processing pipeline
-│   │   │   ├── dwg_converter.py    # DWG -> DXF conversion (LibreDWG)
+│   │   │   ├── dwg_converter.py    # DWG -> DXF conversion (ODA File Converter)
 │   │   │   ├── dxf_parser.py       # DXF entity extraction + fire safety detection
 │   │   │   ├── room_detector.py    # Room polygon detection (Shapely + STRtree)
 │   │   │   ├── room_classifier.py  # AI room classification (OpenRouter + retry)
@@ -231,7 +231,7 @@ rescueforge/
 │   │   ├── services/      # OpenRouter client (with retry & rate-limit)
 │   │   ├── models/        # Pydantic schemas (17 room types, fire safety fields)
 │   │   └── utils/         # Geometry, 20 FKS symbols, translations, corridor routing
-│   ├── tests/             # 341 pytest tests (19 suites)
+│   ├── tests/             # 328+ pytest tests (19 suites)
 │   ├── Dockerfile
 │   └── pyproject.toml
 ├── frontend/
@@ -247,7 +247,7 @@ rescueforge/
 │   └── generate_test_dxfs.py  # Generates 5 synthetic DXFs (mm/m/cm, multilingual)
 ├── docs/                  # API docs, demo script, FKS specs, presentations
 ├── docker-compose.yml     # Development setup
-├── docker-compose.prod.yml # Production overrides
+├── docker-compose.override.yml # Dev overrides (source mounts)
 └── .env.example
 ```
 
@@ -293,9 +293,9 @@ Output plans follow [DIN 14095](https://www.din.de/) (Feuerwehr-Laufkarten / Ori
 ```bash
 # Backend tests (in Docker — full suite)
 docker compose exec backend uv run pytest -v
-# 341 tests, 19 suites
+# 328+ tests, 19 suites
 
-# Local tests (no Docker / Celery required)
+# Local tests (no Docker required)
 cd backend && uv run pytest tests/test_dxf_parser.py tests/test_plan_generator.py \
     tests/test_room_detector.py tests/test_symbols_extended.py tests/test_translations.py \
     tests/test_visual_regression.py tests/test_corridor_routing.py \
@@ -326,7 +326,7 @@ docker compose exec backend uv run ruff check app/
 | `test_error_handling.py` | 22 | DXF errors, PDF errors, retry logic, room type validation, security |
 | `test_openrouter.py` | 20 | Retry logic (429, 500s, timeout, connect), Retry-After header, vision/text API |
 | `test_api_routes_extended.py` | 19 | File downloads, original SVG, error endpoint, job state machine, room validation |
-| `test_dwg_converter.py` | 16 | DWG detection, dwg2dxf/dwgread mock, timeout, fallback, path handling |
+| `test_dwg_converter.py` | 15 | DWG detection, ODA File Converter mock, timeout, path handling |
 | `test_translations.py` | 15 | Localization (EN/DE), room labels, fallback, key coverage completeness |
 | `test_websocket.py` | 13 | Step labels, UUID validation, progress/success/failure states |
 | `test_room_classifier.py` | 10 | Heuristic, Vision API mock, markdown parsing, fallback |
@@ -338,7 +338,7 @@ docker compose exec backend uv run ruff check app/
 | `test_symbol_collision.py` | 6 | AABB overlap detection, shift on overlap, label registration, small rooms |
 | `test_real_world_dxf.py` | 5 | Real-world DXF files from open sources, parser robustness |
 | `test_rate_limiting.py` | 3 | Rate limit middleware, concurrent requests |
-| **Total** | **341** | |
+| **Total** | **328+** | |
 
 ### Synthetic Test DXF Files
 
@@ -371,8 +371,8 @@ Typical pipeline duration for a standard office building (14 rooms, 248 walls):
 RescueForge uses no fixed ports (except frontend:3000) and is ready for platforms like Coolify:
 
 ```bash
-# Production deployment
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Production deployment (Coolify auto-deploys on push)
+docker compose up -d
 ```
 
 Set these environment variables:
@@ -386,13 +386,13 @@ The frontend proxies all API requests internally via Next.js rewrites. No backen
 
 | Problem | Solution |
 |---------|----------|
-| `ModuleNotFoundError: celery` | Run tests inside Docker: `docker compose exec backend uv run pytest` |
+| Tests failing locally | Some tests require Docker volume mounts. Run in Docker: `docker compose exec backend uv run pytest` |
 | Upload returns 413 | File exceeds `MAX_UPLOAD_SIZE_MB` (default 50MB) |
 | Vision API timeout | Check `OPENROUTER_API_KEY` in `.env`. Automatic retry (3x) + heuristic fallback. |
-| LibreDWG not found | Only needed for DWG files. DXF files work without it. |
+| ODA File Converter not found | Only needed for DWG files. DXF files work without it. Installed via .deb in Docker. |
 | Frontend can't reach backend | API is proxied via Next.js rewrites. Check `BACKEND_URL` env var. |
 | WebSocket not connecting | Falls back to HTTP polling automatically (2s interval) |
-| Cover sheet 404 | Restart worker after code changes: `docker compose restart worker` |
+| Cover sheet 404 | Restart backend after code changes: `docker compose restart backend` |
 | Rate limit errors (429) | Adjust rate limit in middleware config or wait for window reset |
 
 ## AutoCAD Plugin
@@ -440,7 +440,7 @@ See [autocad-plugin/](autocad-plugin/) for the Web-first integration concept. Th
 | Interaktiver Raumeditor (Umklassifizieren & Neu generieren) | Fertig |
 | Batch-Upload (Mehrgeschoss-Verarbeitung) | Fertig |
 | WebSocket Echtzeit-Fortschritt | Fertig |
-| 341 automatisierte Tests (19 Testsuiten) | Fertig |
+| 328+ automatisierte Tests (19 Testsuiten) | Fertig |
 | CI/CD Pipeline (GitHub Actions) | Fertig |
 | 13-Folien-Präsentation (PPTX) | Fertig |
 | AutoCAD-Plugin-Konzept (Web-first Architektur) | Fertig |
@@ -460,13 +460,13 @@ See [autocad-plugin/](autocad-plugin/) for the Web-first integration concept. Th
 - **Dunkelmodus** und **EN/DE Sprachwechsel** (localStorage-persistent)
 - **Sicherheit** — SecurityHeaders, Rate-Limiting, CSP, Eingabevalidierung
 - **Fehlerprotokollierung** — error.json bei Pipeline-Fehlern mit Schritt und Zeitangabe
-- **Celery-Timeouts** — Hardlimit 600s, Softlimit 550s
+- **Hintergrund-Tasks** — ThreadPoolExecutor mit In-Memory JobStore
 
 ### Schnellstart
 
 ```bash
 # Klonen
-git clone https://github.com/your-org/rescueforge.git
+git clone https://github.com/NWichter-NeoTube/RescueForge.git
 cd rescueforge
 
 # Konfigurieren
@@ -477,7 +477,7 @@ cp .env.example .env
 docker compose up --build
 
 # Bauen & Starten (Produktion)
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+docker compose up --build -d
 ```
 
 Das Frontend ist auf Port 3000 erreichbar. Alle API-Anfragen werden intern über Next.js Rewrites an das Backend weitergeleitet — kein direkter Backend-Zugriff nötig.
@@ -505,7 +505,7 @@ Die Ausgabepläne folgen [DIN 14095](https://www.din.de/) und der [FKS Richtlini
 ```bash
 # Backend-Tests (in Docker — vollständige Suite)
 docker compose exec backend uv run pytest -v
-# 341 Tests, 19 Testsuiten
+# 328+ Tests, 19 Testsuiten
 
 # Lokale Tests (ohne Docker — Kerntests)
 cd backend && uv run pytest tests/test_dxf_parser.py tests/test_plan_generator.py \

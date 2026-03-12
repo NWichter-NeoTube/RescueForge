@@ -62,6 +62,6 @@ Kostenlose CAD-Pläne in DWG-Format. Kein Login nötig.
 ## Empfehlung
 
 Für den Hackathon-Prototyp:
-1. **5-10 DWG von DWGShare.com** manuell herunterladen und mit LibreDWG -> DXF konvertieren
+1. **5-10 DWG von DWGShare.com** manuell herunterladen und mit ODA File Converter -> DXF konvertieren
 2. **1 DXF von jscad/sample-files** als schneller Minimaltestfall
 3. **FloorPlanCAD SVGs** für Batch-Tests der Raumklassifikation (später)

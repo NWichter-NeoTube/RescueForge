@@ -16,7 +16,7 @@ curl -o testdata/basement_plan.dxf https://raw.githubusercontent.com/runlevel-6/
 8 DWG files are downloaded from [DWGShare.com](https://dwgshare.com/), as recommended in the Siemens Hackathon 2025 challenge description. Download manually from the links in [SOURCES.md](SOURCES.md).
 
 Supported formats:
-- `testdata/*.dwg` (auto-converted to DXF via LibreDWG)
+- `testdata/*.dwg` (auto-converted to DXF via ODA File Converter)
 - `testdata/*.dxf`
 
 ## Sources

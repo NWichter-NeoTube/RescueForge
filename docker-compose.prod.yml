@@ -10,25 +10,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "1"
-          memory: 2G
-        reservations:
-          cpus: "0.5"
-          memory: 512M
-
-  worker:
-    volumes:
-      - upload_data:/app/uploads
-      - output_data:/app/outputs
-    restart: always
-    deploy:
-      resources:
-        limits:
           cpus: "2"
           memory: 3G
         reservations:
           cpus: "0.5"
-          memory: 1G
+          memory: 512M
 
   frontend:
     build:
@@ -46,14 +32,3 @@ services:
         reservations:
           cpus: "0.25"
           memory: 256M
-
-  redis:
-    restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 512M
-        reservations:
-          cpus: "0.25"
-          memory: 128M
