@@ -1,4 +1,4 @@
-"""Tests for DWG to DXF conversion module."""
+"""Tests for DWG to DXF conversion module (ODA File Converter)."""
 
 import subprocess
 from pathlib import Path
@@ -38,56 +38,34 @@ class TestConvertDwgToDxf:
         with pytest.raises(FileNotFoundError, match="not found"):
             convert_dwg_to_dxf("/nonexistent/plan.dwg")
 
-    def test_dwg2dxf_success(self, tmp_path: Path):
-        """Successful dwg2dxf conversion should return DXF path."""
+    def test_oda_converter_success(self, tmp_path: Path):
+        """Successful ODA conversion should return DXF path."""
         dwg = tmp_path / "test.dwg"
         dwg.write_text("FAKE DWG")
-        expected_dxf = tmp_path / "test.dxf"
 
         def mock_run(cmd, **kwargs):
-            # Simulate dwg2dxf creating the output file
-            expected_dxf.write_text("FAKE DXF OUTPUT")
+            # ODA writes to the output dir (2nd arg)
+            out_dir = Path(cmd[2])
+            (out_dir / "test.dxf").write_text("FAKE DXF OUTPUT")
             return MagicMock(returncode=0, stderr="")
 
-        with patch("app.pipeline.dwg_converter.subprocess.run", side_effect=mock_run):
+        with patch("app.pipeline.dwg_converter._find_oda_converter", return_value="ODAFileConverter"), \
+             patch("app.pipeline.dwg_converter.subprocess.run", side_effect=mock_run):
             result = convert_dwg_to_dxf(dwg)
 
-        assert result == expected_dxf
+        assert result == tmp_path / "test.dxf"
         assert result.exists()
 
-    def test_dwg2dxf_fails_dwgread_succeeds(self, tmp_path: Path):
-        """When dwg2dxf fails, should fall back to dwgread."""
-        dwg = tmp_path / "test.dwg"
-        dwg.write_text("FAKE DWG")
-        expected_dxf = tmp_path / "test.dxf"
-
-        call_count = 0
-
-        def mock_run(cmd, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if "dwg2dxf" in cmd:
-                return MagicMock(returncode=1, stderr="dwg2dxf failed")
-            else:
-                # dwgread succeeds
-                expected_dxf.write_text("FAKE DXF FROM DWGREAD")
-                return MagicMock(returncode=0, stderr="")
-
-        with patch("app.pipeline.dwg_converter.subprocess.run", side_effect=mock_run):
-            result = convert_dwg_to_dxf(dwg)
-
-        assert call_count == 2
-        assert result == expected_dxf
-
-    def test_both_tools_fail(self, tmp_path: Path):
-        """When both dwg2dxf and dwgread fail, should raise RuntimeError."""
+    def test_oda_converter_fails(self, tmp_path: Path):
+        """When ODA converter fails, should raise RuntimeError."""
         dwg = tmp_path / "test.dwg"
         dwg.write_text("FAKE DWG")
 
         def mock_run(cmd, **kwargs):
             return MagicMock(returncode=1, stderr="conversion failed")
 
-        with patch("app.pipeline.dwg_converter.subprocess.run", side_effect=mock_run):
+        with patch("app.pipeline.dwg_converter._find_oda_converter", return_value="ODAFileConverter"), \
+             patch("app.pipeline.dwg_converter.subprocess.run", side_effect=mock_run):
             with pytest.raises(RuntimeError, match="conversion failed"):
                 convert_dwg_to_dxf(dwg)
 
@@ -100,20 +78,18 @@ class TestConvertDwgToDxf:
             # Returns success but doesn't create the file
             return MagicMock(returncode=0, stderr="")
 
-        with patch("app.pipeline.dwg_converter.subprocess.run", side_effect=mock_run):
+        with patch("app.pipeline.dwg_converter._find_oda_converter", return_value="ODAFileConverter"), \
+             patch("app.pipeline.dwg_converter.subprocess.run", side_effect=mock_run):
             with pytest.raises(RuntimeError, match="output file not found"):
                 convert_dwg_to_dxf(dwg)
 
-    def test_tools_not_installed(self, tmp_path: Path):
-        """If LibreDWG is not installed, should raise RuntimeError about tools."""
+    def test_converter_not_installed(self, tmp_path: Path):
+        """If ODA converter is not installed, should raise RuntimeError."""
         dwg = tmp_path / "test.dwg"
         dwg.write_text("FAKE DWG")
 
-        def mock_run(cmd, **kwargs):
-            raise FileNotFoundError("No such file or directory: 'dwg2dxf'")
-
-        with patch("app.pipeline.dwg_converter.subprocess.run", side_effect=mock_run):
-            with pytest.raises(RuntimeError, match="LibreDWG tools"):
+        with patch("app.pipeline.dwg_converter._find_oda_converter", return_value=None):
+            with pytest.raises(RuntimeError, match="ODA File Converter not found"):
                 convert_dwg_to_dxf(dwg)
 
     def test_conversion_timeout(self, tmp_path: Path):
@@ -124,7 +100,8 @@ class TestConvertDwgToDxf:
         def mock_run(cmd, **kwargs):
             raise subprocess.TimeoutExpired(cmd, 120)
 
-        with patch("app.pipeline.dwg_converter.subprocess.run", side_effect=mock_run):
+        with patch("app.pipeline.dwg_converter._find_oda_converter", return_value="ODAFileConverter"), \
+             patch("app.pipeline.dwg_converter.subprocess.run", side_effect=mock_run):
             with pytest.raises(RuntimeError, match="timed out"):
                 convert_dwg_to_dxf(dwg)
 
@@ -138,11 +115,12 @@ class TestConvertDwgToDxf:
         expected_dxf = out_dir / "test.dxf"
 
         def mock_run(cmd, **kwargs):
-            expected_dxf.parent.mkdir(parents=True, exist_ok=True)
-            expected_dxf.write_text("FAKE DXF")
+            oda_out = Path(cmd[2])
+            (oda_out / "test.dxf").write_text("FAKE DXF")
             return MagicMock(returncode=0, stderr="")
 
-        with patch("app.pipeline.dwg_converter.subprocess.run", side_effect=mock_run):
+        with patch("app.pipeline.dwg_converter._find_oda_converter", return_value="ODAFileConverter"), \
+             patch("app.pipeline.dwg_converter.subprocess.run", side_effect=mock_run):
             result = convert_dwg_to_dxf(dwg, out_dir)
 
         assert result == expected_dxf
@@ -152,13 +130,14 @@ class TestConvertDwgToDxf:
         """Without output_dir, output should be in same dir as input."""
         dwg = tmp_path / "test.dwg"
         dwg.write_text("FAKE DWG")
-        expected_dxf = tmp_path / "test.dxf"
 
         def mock_run(cmd, **kwargs):
-            expected_dxf.write_text("FAKE DXF")
+            oda_out = Path(cmd[2])
+            (oda_out / "test.dxf").write_text("FAKE DXF")
             return MagicMock(returncode=0, stderr="")
 
-        with patch("app.pipeline.dwg_converter.subprocess.run", side_effect=mock_run):
+        with patch("app.pipeline.dwg_converter._find_oda_converter", return_value="ODAFileConverter"), \
+             patch("app.pipeline.dwg_converter.subprocess.run", side_effect=mock_run):
             result = convert_dwg_to_dxf(dwg)
 
         assert result.parent == dwg.parent

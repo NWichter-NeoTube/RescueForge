@@ -4,7 +4,7 @@ Tests the full pipeline (parse → detect rooms → generate SVG) against
 real architectural floor plans downloaded from various sources.
 
 Files are expected in testdata/ — tests skip gracefully if files are missing.
-DWG files require LibreDWG (odafileconverter or libredwg) for conversion;
+DWG files require ODA File Converter for conversion;
 they are skipped if conversion tools are not available.
 """
 
@@ -57,30 +57,20 @@ def _parse_dxf(dxf_path: Path) -> tuple[FloorPlanData, list[RoomPolygon]]:
     return floor_plan, rooms
 
 
-def _has_libredwg() -> bool:
-    """Check if DWG→DXF conversion is available."""
+def _has_oda_converter() -> bool:
+    """Check if ODA File Converter is available for DWG→DXF conversion."""
     import shutil
-    return shutil.which("dwg2dxf") is not None or shutil.which("ODAFileConverter") is not None
+    return shutil.which("ODAFileConverter") is not None
 
 
 def _convert_dwg_to_dxf(dwg_path: Path, output_dir: Path) -> Path | None:
-    """Convert a DWG file to DXF using available tools."""
-    import shutil
-    import subprocess
+    """Convert a DWG file to DXF using ODA File Converter."""
+    from app.pipeline.dwg_converter import convert_dwg_to_dxf
 
-    dxf_path = output_dir / dwg_path.with_suffix(".dxf").name
-
-    if shutil.which("dwg2dxf"):
-        try:
-            subprocess.run(
-                ["dwg2dxf", "-o", str(dxf_path), str(dwg_path)],
-                capture_output=True, timeout=60, check=True,
-            )
-            return dxf_path
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            return None
-
-    return None
+    try:
+        return convert_dwg_to_dxf(dwg_path, output_dir)
+    except (RuntimeError, FileNotFoundError):
+        return None
 
 
 # ── DXF tests ────────────────────────────────────────────────

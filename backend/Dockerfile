@@ -1,26 +1,4 @@
-# Stage 1: Build LibreDWG from source
-FROM python:3.12-slim-bookworm AS libredwg-builder
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git build-essential autoconf automake libtool texinfo \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN git clone --depth 1 --recurse-submodules https://github.com/LibreDWG/libredwg.git /tmp/libredwg \
-    && cd /tmp/libredwg \
-    && git submodule update --init --recursive \
-    && autoreconf -fi \
-    && ./configure --prefix=/usr/local --disable-bindings --disable-write \
-    && make -j2 \
-    && make install
-
-# Stage 2: Final image
 FROM python:3.12-slim-bookworm
-
-# Copy LibreDWG binaries
-COPY --from=libredwg-builder /usr/local/bin/dwg2dxf /usr/local/bin/dwg2dxf
-COPY --from=libredwg-builder /usr/local/bin/dwgread /usr/local/bin/dwgread
-COPY --from=libredwg-builder /usr/local/lib/libredwg* /usr/local/lib/
-RUN ldconfig
 
 # Install system dependencies (WeasyPrint + Cairo + curl for health checks)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -30,6 +8,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Install ODA File Converter (pre-built DWG→DXF converter, replaces LibreDWG source build)
+RUN curl -fsSL -o /tmp/oda.deb \
+    "https://www.opendesign.com/guestfiles/get?filename=ODAFileConverter_QT6_lnxX64_8.3dll_27.1.deb" \
+    && (dpkg -i /tmp/oda.deb || true) \
+    && apt-get update && apt-get install -f -y --no-install-recommends \
+    && rm /tmp/oda.deb \
+    && rm -rf /var/lib/apt/lists/*
+
+# Headless mode for ODA's Qt6 GUI
+ENV QT_QPA_PLATFORM=offscreen
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
