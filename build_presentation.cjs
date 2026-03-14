@@ -788,21 +788,99 @@ async function buildPresentation() {
   }
 
   // ══════════════════════════════════════════════════════════════
-  // SLIDE 13: Hackathon Deliverables
+  // SLIDE 13: Web-First Strategy (Why no AutoCAD Plugin)
   // ══════════════════════════════════════════════════════════════
-  let s13 = pres.addSlide();
-  s13.background = { color: C.offWhite };
+  let s13a = pres.addSlide();
+  s13a.background = { color: C.offWhite };
 
-  s13.addShape(pres.shapes.RECTANGLE, {
+  s13a.addShape(pres.shapes.RECTANGLE, {
+    x: 0, y: 0, w: 10, h: 1.0, fill: { color: C.navy }
+  });
+  s13a.addText("Web-First Integration Strategy", {
+    x: 0.6, y: 0.15, w: 8, h: 0.7,
+    fontSize: 28, fontFace: "Arial Black", color: C.white, bold: true, margin: 0
+  });
+
+  // Strategy explanation
+  s13a.addShape(pres.shapes.RECTANGLE, {
+    x: 0.5, y: 1.25, w: 9, h: 1.0,
+    fill: { color: C.white }, shadow: makeCardShadow()
+  });
+  s13a.addShape(pres.shapes.RECTANGLE, {
+    x: 0.5, y: 1.25, w: 0.08, h: 1.0, fill: { color: C.escapeGreen }
+  });
+  s13a.addText("AutoCAD Plugin = Thin Client calling the same REST API. Zero duplicated logic. The pipeline is the innovation — not the client.", {
+    x: 0.85, y: 1.3, w: 8.4, h: 0.9,
+    fontSize: 14, fontFace: "Calibri", color: C.darkText, margin: 0
+  });
+
+  // Comparison table
+  const strategyRows = [
+    [
+      { text: "Approach", options: { bold: true, color: C.white, fill: { color: C.charcoal }, fontSize: 12 } },
+      { text: "Effort", options: { bold: true, color: C.white, fill: { color: C.charcoal }, fontSize: 12 } },
+      { text: "Maintenance", options: { bold: true, color: C.white, fill: { color: C.charcoal }, fontSize: 12 } },
+      { text: "Reach", options: { bold: true, color: C.white, fill: { color: C.charcoal }, fontSize: 12 } },
+    ],
+    [
+      { text: "Web App (current)", options: { fontSize: 11, bold: true, color: C.escapeGreen } },
+      { text: "Low", options: { fontSize: 11 } },
+      { text: "Low", options: { fontSize: 11 } },
+      { text: "Any browser, any device", options: { fontSize: 11 } },
+    ],
+    [
+      { text: "AutoCAD Plugin (.NET)", options: { fontSize: 11 } },
+      { text: "High", options: { fontSize: 11 } },
+      { text: "High (version-locked)", options: { fontSize: 11 } },
+      { text: "AutoCAD Desktop only", options: { fontSize: 11 } },
+    ],
+    [
+      { text: "Revit Add-in", options: { fontSize: 11 } },
+      { text: "Very High", options: { fontSize: 11 } },
+      { text: "Very High", options: { fontSize: 11 } },
+      { text: "Revit only", options: { fontSize: 11 } },
+    ],
+  ];
+
+  s13a.addTable(strategyRows, {
+    x: 0.5, y: 2.55, w: 9,
+    colW: [2.8, 1.5, 2.2, 2.5],
+    border: { pt: 0.5, color: C.lightGray },
+    rowH: [0.4, 0.4, 0.4, 0.4],
+    fontFace: "Calibri",
+    color: C.darkText,
+  });
+
+  // Architecture flow
+  s13a.addShape(pres.shapes.RECTANGLE, {
+    x: 0.5, y: 4.25, w: 9, h: 1.1,
+    fill: { color: C.darkNavy }, shadow: makeCardShadow()
+  });
+  s13a.addText("Plugin Architecture: AutoCAD  →  Export DXF  →  POST /api/upload  →  WS Progress  →  Download PDF", {
+    x: 0.7, y: 4.35, w: 8.6, h: 0.4,
+    fontSize: 12, fontFace: "Calibri", color: C.gold, align: "center", margin: 0
+  });
+  s13a.addText("Same API  ·  Same Pipeline  ·  Same Results  ·  Plugin is a 200-line C# wrapper", {
+    x: 0.7, y: 4.8, w: 8.6, h: 0.35,
+    fontSize: 11, fontFace: "Calibri", color: C.medGray, align: "center", italic: true, margin: 0
+  });
+
+  // ══════════════════════════════════════════════════════════════
+  // SLIDE 14: Hackathon Deliverables
+  // ══════════════════════════════════════════════════════════════
+  let s14 = pres.addSlide();
+  s14.background = { color: C.offWhite };
+
+  s14.addShape(pres.shapes.RECTANGLE, {
     x: 0, y: 0, w: 10, h: 1.0, fill: { color: C.escapeGreen }
   });
-  s13.addText("Hackathon Deliverables", {
+  s14.addText("Hackathon Deliverables", {
     x: 0.6, y: 0.15, w: 8, h: 0.7,
     fontSize: 28, fontFace: "Arial Black", color: C.white, bold: true, margin: 0
   });
 
   const deliverables = [
-    "Working prototype (Docker Compose, live at resuceforge.skimu.de)",
+    "Working prototype (Docker Compose, live at rescueforge.skimu.de)",
     "AI-powered room classification (Gemini 2.5 Flash Vision API)",
     "DIN 14095 / FKS-compliant plan output (SVG + PDF)",
     "Complete plan set: Floor plan + Cover sheet + Situation plan + Compliance report",
@@ -820,56 +898,65 @@ async function buildPresentation() {
     text: d,
     options: { bullet: true, breakLine: true, fontSize: 12, color: C.darkText, paraSpaceAfter: 3 }
   }));
-  s13.addText(delivTexts, {
+  s14.addText(delivTexts, {
     x: 0.8, y: 1.2, w: 8.4, h: 4.2,
     fontFace: "Calibri", margin: 0
   });
 
   // ══════════════════════════════════════════════════════════════
-  // SLIDE 14: Closing
+  // SLIDE 15: Closing
   // ══════════════════════════════════════════════════════════════
-  let s14 = pres.addSlide();
-  s14.background = { color: C.darkNavy };
+  let s15 = pres.addSlide();
+  s15.background = { color: C.darkNavy };
 
   // Top accent
-  s14.addShape(pres.shapes.RECTANGLE, {
+  s15.addShape(pres.shapes.RECTANGLE, {
     x: 0, y: 0, w: 10, h: 0.06, fill: { color: C.fireRed }
   });
 
-  s14.addImage({ data: icons.fire, x: 4.25, y: 0.8, w: 0.7, h: 0.7 });
+  s15.addImage({ data: icons.fire, x: 4.25, y: 0.8, w: 0.7, h: 0.7 });
 
-  s14.addText("RescueForge", {
+  s15.addText("RescueForge", {
     x: 0.5, y: 1.6, w: 9, h: 0.8,
     fontSize: 44, fontFace: "Arial Black", color: C.white, bold: true, align: "center", margin: 0
   });
 
-  s14.addText("From CAD to Fire Safety Plan in Seconds", {
+  s15.addText("From CAD to Fire Safety Plan in Seconds", {
     x: 0.5, y: 2.4, w: 9, h: 0.5,
     fontSize: 18, fontFace: "Calibri", color: C.medGray, align: "center", italic: true, margin: 0
   });
 
-  s14.addShape(pres.shapes.LINE, {
+  s15.addShape(pres.shapes.LINE, {
     x: 3.5, y: 3.1, w: 3, h: 0,
     line: { color: C.fireRed, width: 2 }
   });
 
   // Links
-  s14.addText([
+  s15.addText([
     { text: "github.com/NWichter-NeoTube/RescueForge", options: { breakLine: true, fontSize: 14, color: C.gold } },
-    { text: "resuceforge.skimu.de", options: { fontSize: 14, color: C.gold } },
+    { text: "rescueforge.skimu.de", options: { fontSize: 14, color: C.gold } },
   ], {
     x: 0.5, y: 3.4, w: 9, h: 1.0,
     fontFace: "Calibri", align: "center", margin: 0
   });
 
-  s14.addText("Siemens Hackathon 2025  |  Industrial AI Track", {
+  s15.addText("Siemens Hackathon 2025  |  Industrial AI Track", {
     x: 0.5, y: 4.5, w: 9, h: 0.4,
     fontSize: 13, fontFace: "Calibri", color: C.subtleText, align: "center", margin: 0
   });
 
   // Bottom bar
-  s14.addShape(pres.shapes.RECTANGLE, {
+  s15.addShape(pres.shapes.RECTANGLE, {
     x: 0, y: 5.325, w: 10, h: 0.3, fill: { color: C.navy }
+  });
+
+  // ── Add slide numbers to content slides ──
+  const contentSlides = [s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13a, s14];
+  contentSlides.forEach((slide, idx) => {
+    slide.addText(`${idx + 2} / 15`, {
+      x: 8.5, y: 5.25, w: 1.2, h: 0.3,
+      fontSize: 8, fontFace: "Calibri", color: C.medGray, align: "right", margin: 0
+    });
   });
 
   // ── Save ──
