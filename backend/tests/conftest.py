@@ -19,6 +19,10 @@ def pytest_addoption(parser):
 os.environ.setdefault("UPLOAD_DIR", "/tmp/rescueforge_test/uploads")
 os.environ.setdefault("OUTPUT_DIR", "/tmp/rescueforge_test/outputs")
 
+# Ensure test directories exist before any module imports app.main (which mounts StaticFiles)
+Path(os.environ["UPLOAD_DIR"]).mkdir(parents=True, exist_ok=True)
+Path(os.environ["OUTPUT_DIR"]).mkdir(parents=True, exist_ok=True)
+
 # Works both locally (../../testdata) and in Docker (/app/testdata)
 _local_testdata = Path(__file__).parent.parent.parent / "testdata"
 _docker_testdata = Path("/app/testdata")

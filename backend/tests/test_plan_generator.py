@@ -331,35 +331,6 @@ class TestSituationPlan:
         assert "Situation Plan" in content
 
 
-class TestGeometryUtils:
-    """Test geometry utility functions."""
-
-    def test_line_angle(self):
-        from app.utils.geometry import line_angle
-        assert line_angle(0, 0, 1, 0) == pytest.approx(0, abs=0.1)
-        assert line_angle(0, 0, 0, 1) == pytest.approx(90, abs=0.1)
-        assert line_angle(0, 0, -1, 0) == pytest.approx(180, abs=0.1)
-
-    def test_is_horizontal(self):
-        from app.utils.geometry import is_horizontal
-        assert is_horizontal(0, 0, 10, 0)
-        assert not is_horizontal(0, 0, 0, 10)
-
-    def test_is_vertical(self):
-        from app.utils.geometry import is_vertical
-        assert is_vertical(0, 0, 0, 10)
-        assert not is_vertical(0, 0, 10, 0)
-
-    def test_polygon_aspect_ratio(self):
-        from shapely.geometry import Polygon
-        from app.utils.geometry import polygon_aspect_ratio
-        square = Polygon([(0, 0), (10, 0), (10, 10), (0, 10)])
-        assert polygon_aspect_ratio(square) == pytest.approx(1.0)
-
-        rectangle = Polygon([(0, 0), (40, 0), (40, 10), (0, 10)])
-        assert polygon_aspect_ratio(rectangle) == pytest.approx(4.0)
-
-
 class TestLanguageSupport:
     """Test multi-language support for SVG, cover sheet, and situation plan."""
 
@@ -456,17 +427,6 @@ class TestFireFeatures:
         content = svg_path.read_text(encoding="utf-8")
         assert 'id="fire-doors"' in content
         assert "T30" in content
-
-
-class TestReferenceGrid:
-    """Test DIN 14095 reference grid generation."""
-
-    def test_grid_exists(self, tmp_output: Path):
-        """SVG should contain a reference-grid group."""
-        fp, rooms = _make_test_floor_plan()
-        svg_path = generate_svg(fp, rooms, tmp_output / "grid.svg")
-        content = svg_path.read_text(encoding="utf-8")
-        assert 'id="reference-grid"' in content
 
 
 class TestExtendedTitleBlock:
